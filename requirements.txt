@@ -7,3 +7,9 @@ python-dotenv==1.0.1
 websockets==14.1
 pydantic==2.10.4
 pydantic-settings==2.7.1
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.31.0
+alembic==1.18.4
+google-auth==2.38.0
+google-auth-oauthlib==1.2.1
+google-api-python-client==2.159.0

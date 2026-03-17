@@ -8,8 +8,9 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""
 
-    # Claude API
-    anthropic_api_key: str = ""
+    # Claude API (via local antigravity proxy)
+    anthropic_api_key: str = "proxy"
+    claude_proxy_url: str = "http://localhost:8080"
 
     # MLS API
     mls_api_base_url: str = "https://tfs.tlcengine.com/api"
@@ -17,6 +18,13 @@ class Settings(BaseSettings):
 
     # Close CRM
     close_api_key: str = ""
+
+    # PostgreSQL
+    database_url: str = "postgresql+asyncpg://aiassistant:aiassistant123@localhost:5432/aiassistant"
+
+    # Google OAuth (Dossier project creds)
+    google_client_id: str = ""
+    google_client_secret: str = ""
 
     # VoiceBox
     voicebox_url: str = "http://localhost:8004"

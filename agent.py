@@ -95,7 +95,10 @@ TOOL_HANDLERS = {
 async def run_agent(user_message: str, conversation_history: list[dict]) -> tuple[str, list]:
     """Run the Claude agent with tool use. Returns (reply_text, tool_results)."""
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key or "proxy",
+        base_url=settings.claude_proxy_url,
+    )
 
     conversation_history.append({"role": "user", "content": user_message})
     tool_results = []
@@ -124,7 +127,6 @@ async def run_agent(user_message: str, conversation_history: list[dict]) -> tupl
         # If no tool calls, we're done
         if not tool_uses:
             reply = " ".join(text_parts)
-            conversation_history.append({"role": "assistant", "content": reply})
             return reply, tool_results
 
         # Execute tool calls

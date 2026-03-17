@@ -18,7 +18,18 @@ from voice.voicebox_client import speech_to_text, text_to_speech
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from crm.database import init_db
+from crm.routes import router as crm_router
+from crm.gmail_routes import router as gmail_router
+
 app = FastAPI(title="CertiHomes AI Assistant", version="1.0.0")
+app.include_router(crm_router)
+app.include_router(gmail_router)
+
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
 
 # In-memory conversation store (keyed by conversation_id)
 conversations: dict[str, list[dict]] = {}
