@@ -1,0 +1,15 @@
+[Unit]
+Description=CertiHomes AI Assistant
+After=network.target
+
+[Service]
+Type=simple
+User=krish
+WorkingDirectory=/home/krish/aiassistant
+EnvironmentFile=/home/krish/aiassistant/.env
+ExecStart=/home/krish/anaconda3/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8005
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
