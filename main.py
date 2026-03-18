@@ -173,32 +173,42 @@ async def voice_respond(request: Request):
 
     asyncio.create_task(_run_agent_bg())
 
-    # Pick pre-recorded acknowledgment MP3 based on what they said (instant playback!)
+    # Pick pre-recorded acknowledgment MP3 — randomly selects from variations
+    import random
     lower = transcript.lower()
     voice_base = "https://aiassistant.certihomes.com/voice"
 
+    # Handle goodbye immediately — don't run agent, just hang up
+    if any(w in lower for w in ("bye", "goodbye", "that's all", "hang up", "i'm done", "that's it", "no thanks", "nothing else")):
+        # Cancel the background agent task (it's not needed)
+        pending_voice_responses.pop(call_sid, None)
+        voice_conversations.pop(call_sid, None)
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>{voice_base}/ack_goodbye.mp3</Play>
+</Response>"""
+        return Response(content=twiml, media_type="application/xml")
+
     if "cma" in lower or "value" in lower or "worth" in lower:
-        ack_file = "ack_cma.mp3"
+        ack_file = random.choice(["ack_cma_1.mp3", "ack_cma_2.mp3", "ack_cma_3.mp3"])
     elif "market" in lower or "stats" in lower or "report" in lower:
-        ack_file = "ack_market.mp3"
+        ack_file = random.choice(["ack_market_1.mp3", "ack_market_2.mp3", "ack_market_3.mp3"])
     elif "search" in lower or "homes" in lower or "bedroom" in lower or "house" in lower:
-        ack_file = "ack_search.mp3"
+        ack_file = random.choice(["ack_search_1.mp3", "ack_search_2.mp3", "ack_search_3.mp3"])
     elif "email" in lower or "send" in lower:
-        ack_file = "ack_email.mp3"
+        ack_file = random.choice(["ack_email_1.mp3", "ack_email_2.mp3"])
     elif "tax" in lower or "assessment" in lower:
-        ack_file = "ack_tax.mp3"
+        ack_file = random.choice(["ack_tax_1.mp3", "ack_tax_2.mp3"])
     elif "forecast" in lower or "predict" in lower:
         ack_file = "ack_forecast.mp3"
     elif any(w in lower for w in ("hello", "hi ", "hey", "good morning", "good afternoon")):
-        ack_file = "ack_hello.mp3"
+        ack_file = random.choice(["ack_hello_1.mp3", "ack_hello_2.mp3", "ack_hello_3.mp3"])
     elif any(w in lower for w in ("thank", "thanks", "appreciate")):
-        ack_file = "ack_thanks.mp3"
-    elif any(w in lower for w in ("bye", "goodbye", "that's all", "hang up")):
-        ack_file = "ack_goodbye.mp3"
+        ack_file = random.choice(["ack_thanks_1.mp3", "ack_thanks_2.mp3", "ack_thanks_3.mp3"])
     else:
-        ack_file = "ack_general.mp3"
+        ack_file = random.choice(["filler_1.mp3", "filler_2.mp3", "filler_3.mp3", "filler_4.mp3", "filler_5.mp3"])
 
-    # Respond INSTANTLY with pre-recorded ack + hold music + poll for agent result
+    # Respond INSTANTLY with pre-recorded ack + poll for agent result
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>{voice_base}/{ack_file}</Play>
