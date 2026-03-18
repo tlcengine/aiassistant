@@ -111,22 +111,22 @@ async def incoming_call(request: Request):
 # In-memory voice conversation store (keyed by CallSid)
 voice_conversations: dict[str, list[dict]] = {}
 
+# Pending agent responses (keyed by CallSid)
+pending_voice_responses: dict[str, str | None] = {}
+
 
 @app.post("/voice-respond")
 async def voice_respond(request: Request):
     """Process caller speech via AI agent and respond with TTS.
 
-    This is the core conversation loop:
-    1. Twilio transcribes speech → sends SpeechResult here
-    2. We run the AI agent on the transcript
-    3. Respond with <Say> + loop back to <Gather> for next turn
-    Barge-in is automatic — caller can interrupt <Say> anytime.
+    Flow: Twilio sends SpeechResult → we start agent in background →
+    immediately respond with "working on it" + hold music loop →
+    /voice-check polls until agent is done → delivers response.
     """
     form = await request.form()
     transcript = form.get("SpeechResult", "").strip()
     confidence = form.get("Confidence", "0")
     call_sid = form.get("CallSid", "unknown")
-    caller = form.get("From", "")
 
     logger.info(f"Caller said: '{transcript}' (confidence: {confidence}, CallSid: {call_sid})")
 
@@ -136,9 +136,8 @@ async def voice_respond(request: Request):
     <Gather input="speech" action="/voice-respond" method="POST"
             speechTimeout="2" speechModel="experimental_conversations"
             enhanced="true" language="en-US">
-        <Say voice="Google.en-US-Journey-F">Sorry, I didn't catch that. Could you say that again?</Say>
+        <Play>https://aiassistant.certihomes.com/voice/ack_didnt_catch.mp3</Play>
     </Gather>
-    <Say voice="Google.en-US-Journey-F">I'm still here if you need anything!</Say>
     <Redirect>/incoming-call</Redirect>
 </Response>"""
         return Response(content=twiml, media_type="application/xml")
@@ -150,30 +149,93 @@ async def voice_respond(request: Request):
     if not history:
         context = (
             "[SYSTEM CONTEXT]: This is a PHONE call. Keep ALL responses concise — 1-3 sentences max. "
-            "Speak naturally like a helpful friend. Never use markdown, bullets, lists, or URLs. "
-            "Summarize data points verbally. After giving info, ask if they want it emailed. "
+            "Speak naturally like a helpful friend. Never use markdown, bullets, lists, or URLs in speech. "
+            "Summarize data verbally. After giving info, ask if they want it emailed. "
             "Available tools: search_listings, search_portal_listings, get_market_report, "
             "send_market_report_email, send_email, get_tax_data, get_forecast, cma_quick_lookup, "
             "cma_full_report, make_outbound_call, submit_browser_task. "
             "For property lookups, prefer cma_quick_lookup — use its voice_summary field. "
-            "Keep it conversational and warm."
+            "Keep it conversational and warm. Never say URLs aloud."
         )
         history.append({"role": "user", "content": context})
         history.append({"role": "assistant", "content": "Ready to help!"})
 
-    # Run the AI agent
-    try:
-        reply, tool_results = await run_agent(transcript, history)
-        logger.info(f"Agent reply ({len(reply)} chars): {reply[:100]}...")
-    except Exception:
-        logger.exception("Agent error during voice call")
-        reply = "I ran into an issue processing that. Could you try again?"
+    # Mark as pending and start agent in background
+    pending_voice_responses[call_sid] = None
 
-    # Escape XML special chars in the reply
+    async def _run_agent_bg():
+        try:
+            reply, _ = await run_agent(transcript, history)
+            pending_voice_responses[call_sid] = reply
+            logger.info(f"Agent reply ready ({len(reply)} chars): {reply[:80]}...")
+        except Exception:
+            logger.exception("Agent error during voice call")
+            pending_voice_responses[call_sid] = "I ran into a hiccup. Could you try saying that again?"
+
+    asyncio.create_task(_run_agent_bg())
+
+    # Pick pre-recorded acknowledgment MP3 based on what they said (instant playback!)
+    lower = transcript.lower()
+    voice_base = "https://aiassistant.certihomes.com/voice"
+
+    if "cma" in lower or "value" in lower or "worth" in lower:
+        ack_file = "ack_cma.mp3"
+    elif "market" in lower or "stats" in lower or "report" in lower:
+        ack_file = "ack_market.mp3"
+    elif "search" in lower or "homes" in lower or "bedroom" in lower or "house" in lower:
+        ack_file = "ack_search.mp3"
+    elif "email" in lower or "send" in lower:
+        ack_file = "ack_email.mp3"
+    elif "tax" in lower or "assessment" in lower:
+        ack_file = "ack_tax.mp3"
+    elif "forecast" in lower or "predict" in lower:
+        ack_file = "ack_forecast.mp3"
+    elif any(w in lower for w in ("hello", "hi ", "hey", "good morning", "good afternoon")):
+        ack_file = "ack_hello.mp3"
+    elif any(w in lower for w in ("thank", "thanks", "appreciate")):
+        ack_file = "ack_thanks.mp3"
+    elif any(w in lower for w in ("bye", "goodbye", "that's all", "hang up")):
+        ack_file = "ack_goodbye.mp3"
+    else:
+        ack_file = "ack_general.mp3"
+
+    # Respond INSTANTLY with pre-recorded ack + hold music + poll for agent result
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>{voice_base}/{ack_file}</Play>
+    <Redirect>/voice-check?sid={call_sid}</Redirect>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
+
+
+@app.post("/voice-check")
+@app.get("/voice-check")
+async def voice_check(request: Request):
+    """Poll for agent response. Once ready, deliver it and loop back to Gather."""
+    # Get CallSid from query param or form
+    params = request.query_params
+    call_sid = params.get("sid", "")
+    if not call_sid:
+        form = await request.form()
+        call_sid = form.get("CallSid", "unknown")
+
+    reply = pending_voice_responses.get(call_sid)
+
+    if reply is None:
+        # Not ready yet — play thinking music and check again
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>https://aiassistant.certihomes.com/thinking.wav</Play>
+    <Redirect>/voice-check?sid={call_sid}</Redirect>
+</Response>"""
+        return Response(content=twiml, media_type="application/xml")
+
+    # Agent response is ready! Clean up and deliver
+    pending_voice_responses.pop(call_sid, None)
+
     import html
     safe_reply = html.escape(reply)
 
-    # Build response: Say the reply, then Gather for next turn
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="/voice-respond" method="POST"
@@ -181,11 +243,12 @@ async def voice_respond(request: Request):
             enhanced="true" language="en-US">
         <Say voice="Google.en-US-Journey-F">{safe_reply}</Say>
     </Gather>
-    <Say voice="Google.en-US-Journey-F">Are you still there? Feel free to ask me anything else, or you can hang up anytime.</Say>
+    <Pause length="5"/>
+    <Say voice="Google.en-US-Journey-F">Are you still there? I'm here if you need anything else.</Say>
     <Gather input="speech" action="/voice-respond" method="POST"
             speechTimeout="5" speechModel="experimental_conversations"
             enhanced="true" language="en-US">
-        <Say voice="Google.en-US-Journey-F">I'm here whenever you're ready!</Say>
+        <Say voice="Google.en-US-Journey-F">Just say something when you're ready!</Say>
     </Gather>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
