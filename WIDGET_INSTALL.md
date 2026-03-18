@@ -19,6 +19,15 @@ The widget automatically:
 - Uses Shadow DOM so it never conflicts with your site's CSS
 - Works on any page with no configuration needed
 
+### Voice Features
+The widget includes built-in voice support:
+- **Mic button**: A microphone button next to the text input lets users speak instead of type
+- **Speech-to-text**: Uses the browser's SpeechRecognition API (Chrome, Edge, Safari) to transcribe voice input
+- **Text-to-speech**: AI responses are read aloud using the browser's speechSynthesis API
+- **Voice status indicator**: Shows "Listening..." while recording speech
+- Preferred TTS voices: Google US English, Microsoft Zira, Karen (falls back to default)
+- Hold the mic button to talk, release to send
+
 ### Optional: Custom positioning
 ```html
 <script src="https://aiassistant.certihomes.com/widget.js"
@@ -69,3 +78,9 @@ The widget automatically:
 - **WordPress**: Add to `footer.php` before `</body>`, or use a plugin like "Insert Headers and Footers" to add the script tag to the footer.
 
 - **Nginx**: Not applicable — add the script to the HTML files being served, not the Nginx config.
+
+### Browser Compatibility for Voice Features
+- **Chrome/Edge**: Full support (SpeechRecognition + speechSynthesis)
+- **Safari**: Full support (webkitSpeechRecognition + speechSynthesis)
+- **Firefox**: Text-to-speech only (speechSynthesis supported, SpeechRecognition not supported — mic button hidden)
+- If SpeechRecognition is not available, the mic button is automatically hidden and the widget works as text-only chat.

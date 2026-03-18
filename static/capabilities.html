@@ -409,7 +409,7 @@
   <img src="https://aiassistant.certihomes.com/images/certihomes-logo-email.png" alt="CertiHomes">
   <h1>CertiHomes AI Assistant</h1>
   <p class="subtitle">Complete reference for voice, chat, CRM, browser automation, MLS data, and CMA capabilities</p>
-  <p class="version">v1.0 &mdash; March 2026 &mdash; aiassistant.certihomes.com</p>
+  <p class="version">v2.0 &mdash; March 2026 &mdash; aiassistant.certihomes.com</p>
 </div>
 
 <div class="container">
@@ -423,8 +423,10 @@
   <nav class="toc">
     <h2>Table of Contents</h2>
     <ol>
-      <li><a href="#voice">Voice Commands (Phone)</a></li>
-      <li><a href="#chat">Chat Interface</a></li>
+      <li><a href="#voice">Voice System (Inbound Calls)</a></li>
+      <li><a href="#outbound">Outbound Calls</a></li>
+      <li><a href="#chat">Chat Interface &amp; Widget</a></li>
+      <li><a href="#voice-files">Pre-recorded Voice Files</a></li>
       <li><a href="#crm">CRM Features</a></li>
       <li><a href="#browser">Browser Agent</a></li>
       <li><a href="#mls">MLS &amp; Market Data</a></li>
@@ -436,7 +438,7 @@
 
   <!-- ======== 1. VOICE COMMANDS ======== -->
   <section class="section" id="voice">
-    <h2><span class="icon">&#9742;</span> Voice Commands</h2>
+    <h2><span class="icon">&#9742;</span> Voice System (Inbound Calls)</h2>
     <p class="section-sub">Call <strong>+1 (908) 430-5187</strong> via Twilio &mdash; no menus, just speak naturally</p>
 
     <h3>Property Search</h3>
@@ -515,7 +517,7 @@
       </div>
     </div>
 
-    <h3>Outbound Calls &amp; General</h3>
+    <h3>General Questions</h3>
     <div class="examples">
       <div class="example">
         <span class="label">Say</span>
@@ -534,18 +536,70 @@
     <h3>How It Works</h3>
     <ul class="features">
       <li>Natural language &mdash; no phone tree or IVR menus</li>
-      <li>Speech-to-text via VoiceBox, processed by AI agent, text-to-speech reply streamed back</li>
-      <li>Twilio WebSocket media stream for real-time audio</li>
+      <li><strong>Twilio Gather speech loop</strong> &mdash; Twilio's native speech recognition (not WebSocket streaming) with <code>speechModel="experimental_conversations"</code></li>
+      <li><strong>Pre-recorded acknowledgments</strong> &mdash; 40+ MP3 files generated with edge-tts (en-US-JennyNeural) for instant playback with zero TTS latency</li>
+      <li><strong>Context-aware fillers</strong> &mdash; varied by topic: 5 general, 3 CMA, 3 market, 3 search, 2 email, 2 tax, 1 forecast, 3 hello, 3 thanks</li>
+      <li><strong>Async agent processing</strong> &mdash; AI agent runs in background while caller hears acknowledgment + hold music (C&rarr;Am&rarr;F&rarr;G chord progression, 15s loop)</li>
+      <li><strong>Google.en-US-Neural2-F</strong> for dynamic AI responses (matches JennyNeural warmth)</li>
+      <li><strong>Barge-in support</strong> &mdash; caller can interrupt at any time during TTS playback</li>
+      <li><strong>Instant goodbye detection</strong> &mdash; "bye", "goodbye", "that's all", "hang up", "I'm done" triggers immediate hangup without running the agent</li>
       <li>Automatic follow-up SMS with CertiHomes link after every call</li>
       <li>Auto lead capture: asks for name and email after first interaction</li>
     </ul>
   </section>
 
-  <!-- ======== 2. CHAT INTERFACE ======== -->
+  <!-- ======== 2. OUTBOUND CALLS ======== -->
+  <section class="section" id="outbound">
+    <h2><span class="icon">&#128222;</span> Outbound Calls</h2>
+    <p class="section-sub">AI-initiated phone calls via the <strong>make_outbound_call</strong> tool</p>
+
+    <h3>How It Works</h3>
+    <ul class="features">
+      <li>Tell the AI to call someone: <em>"Call James and tell him the inspection is done"</em></li>
+      <li>If only a name is given, the CRM is searched for their phone number</li>
+      <li>AI delivers the message via TTS (Google.en-US-Journey-F voice)</li>
+      <li>Recipient hears a 3-option DTMF menu after the message</li>
+    </ul>
+
+    <h3>Recipient Options (DTMF)</h3>
+    <div class="examples">
+      <div class="example">
+        <span class="label">Press 1</span>
+        <span class="cmd">Start an AI conversation &mdash; enters the same Gather speech loop as inbound calls</span>
+      </div>
+      <div class="example">
+        <span class="label">Press 2</span>
+        <span class="cmd">Connect to Krishna's phone &mdash; live transfer via Twilio Dial</span>
+      </div>
+      <div class="example">
+        <span class="label">Press 3</span>
+        <span class="cmd">Hang up &mdash; plays goodbye message and ends the call</span>
+      </div>
+    </div>
+
+    <h3>Example Commands</h3>
+    <div class="examples">
+      <div class="example">
+        <span class="label">Say / Type</span>
+        <span class="cmd">"Call James and tell him the inspection is done"</span>
+      </div>
+      <div class="example">
+        <span class="label">Say / Type</span>
+        <span class="cmd">"Call +19085551234 and say the offer was accepted"</span>
+      </div>
+      <div class="example">
+        <span class="label">Say / Type</span>
+        <span class="cmd">"Ring Sarah and let her know the closing is next Thursday"</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 3. CHAT INTERFACE ======== -->
   <section class="section" id="chat">
-    <h2><span class="icon">&#128172;</span> Chat Interface</h2>
+    <h2><span class="icon">&#128172;</span> Chat Interface &amp; Widget</h2>
     <p class="section-sub"><a href="https://aiassistant.certihomes.com">aiassistant.certihomes.com</a> &mdash; web-based chat with the same AI agent</p>
 
+    <h3>Chat Features</h3>
     <ul class="features">
       <li>All voice commands work in chat with longer, more detailed responses</li>
       <li>Supports formatted output with links, data tables, and structured results</li>
@@ -553,6 +607,16 @@
       <li>Tool call results are displayed alongside the AI response</li>
       <li>Can send emails, generate CMA reports, and start browser tasks inline</li>
       <li>No character limits &mdash; AI provides full explanations and market context</li>
+    </ul>
+
+    <h3>Embeddable Chat Widget</h3>
+    <ul class="features">
+      <li>Single-line embed: <code>&lt;script src="https://aiassistant.certihomes.com/widget.js"&gt;&lt;/script&gt;</code></li>
+      <li><strong>Shadow DOM isolation</strong> &mdash; widget styles never leak into or conflict with the host page</li>
+      <li><strong>Microphone button</strong> for voice input &mdash; uses browser <code>SpeechRecognition</code> API for speech-to-text</li>
+      <li><strong>Text-to-speech replies</strong> &mdash; browser <code>speechSynthesis</code> reads AI responses aloud</li>
+      <li>Floating icon with pulse animation; configurable position (<code>data-position</code>) and color (<code>data-color</code>)</li>
+      <li>Unique conversation ID per widget session</li>
     </ul>
 
     <h3>Example Conversations</h3>
@@ -572,7 +636,97 @@
     </div>
   </section>
 
-  <!-- ======== 3. CRM FEATURES ======== -->
+  <!-- ======== 4. PRE-RECORDED VOICE FILES ======== -->
+  <section class="section" id="voice-files">
+    <h2><span class="icon">&#127925;</span> Pre-recorded Voice Files</h2>
+    <p class="section-sub">40+ MP3s generated with <strong>edge-tts</strong> (en-US-JennyNeural) &mdash; served from <code>/voice/</code></p>
+
+    <h3>Core</h3>
+    <div class="metric-grid">
+      <div class="metric-item">greeting.mp3</div>
+      <div class="metric-item">ack_didnt_catch.mp3</div>
+      <div class="metric-item">ack_still_here.mp3</div>
+      <div class="metric-item">ack_goodbye.mp3</div>
+      <div class="metric-item">ack_working.mp3</div>
+      <div class="metric-item">ack_general.mp3</div>
+    </div>
+
+    <h3>General Fillers (5)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">filler_1.mp3</div>
+      <div class="metric-item">filler_2.mp3</div>
+      <div class="metric-item">filler_3.mp3</div>
+      <div class="metric-item">filler_4.mp3</div>
+      <div class="metric-item">filler_5.mp3</div>
+    </div>
+
+    <h3>CMA / Valuation (3)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_cma_1.mp3</div>
+      <div class="metric-item">ack_cma_2.mp3</div>
+      <div class="metric-item">ack_cma_3.mp3</div>
+    </div>
+
+    <h3>Market Stats (3)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_market_1.mp3</div>
+      <div class="metric-item">ack_market_2.mp3</div>
+      <div class="metric-item">ack_market_3.mp3</div>
+    </div>
+
+    <h3>Search / Listings (3)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_search_1.mp3</div>
+      <div class="metric-item">ack_search_2.mp3</div>
+      <div class="metric-item">ack_search_3.mp3</div>
+    </div>
+
+    <h3>Email (2)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_email_1.mp3</div>
+      <div class="metric-item">ack_email_2.mp3</div>
+    </div>
+
+    <h3>Tax (2)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_tax_1.mp3</div>
+      <div class="metric-item">ack_tax_2.mp3</div>
+    </div>
+
+    <h3>Forecast (1)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_forecast.mp3</div>
+    </div>
+
+    <h3>Hello / Greeting (3)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_hello_1.mp3</div>
+      <div class="metric-item">ack_hello_2.mp3</div>
+      <div class="metric-item">ack_hello_3.mp3</div>
+    </div>
+
+    <h3>Thanks (3)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">ack_thanks_1.mp3</div>
+      <div class="metric-item">ack_thanks_2.mp3</div>
+      <div class="metric-item">ack_thanks_3.mp3</div>
+    </div>
+
+    <h3>Outbound Call (4)</h3>
+    <div class="metric-grid">
+      <div class="metric-item">outbound_intro.mp3</div>
+      <div class="metric-item">outbound_options.mp3</div>
+      <div class="metric-item">outbound_connect.mp3</div>
+      <div class="metric-item">outbound_goodbye.mp3</div>
+    </div>
+
+    <h3>Hold Music</h3>
+    <ul class="features">
+      <li><strong>thinking.wav</strong> &mdash; 15-second ambient hold music (C&rarr;Am&rarr;F&rarr;G chord progression), played in a loop while the AI agent processes</li>
+    </ul>
+  </section>
+
+  <!-- ======== 5. CRM FEATURES ======== -->
   <section class="section" id="crm">
     <h2><span class="icon">&#128200;</span> CRM Features</h2>
     <p class="section-sub"><a href="https://aiassistant.certihomes.com/crm">aiassistant.certihomes.com/crm</a> &mdash; built-in contact and deal management</p>
@@ -885,24 +1039,56 @@
       </tbody>
     </table>
 
-    <h3>Voice (Twilio)</h3>
+    <h3>Voice &mdash; Inbound (Twilio)</h3>
     <table class="api-table">
       <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
       <tbody>
         <tr>
           <td><span class="method post">POST</span></td>
           <td class="endpoint">/incoming-call</td>
-          <td>Twilio webhook &mdash; returns TwiML to answer and connect stream</td>
+          <td>Twilio webhook &mdash; answers call with Gather speech loop and pre-recorded greeting</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="endpoint">/voice-respond</td>
+          <td>Receives SpeechResult from Gather, starts async agent, plays acknowledgment MP3 + redirects to /voice-check</td>
+        </tr>
+        <tr>
+          <td><span class="method get">GET</span></td>
+          <td class="endpoint">/voice-check</td>
+          <td>Polls for agent response; plays hold music loop until ready, then delivers TTS reply via Gather</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="endpoint">/voice-check</td>
+          <td>Same as GET &mdash; accepts Twilio form POST for redirect compatibility</td>
         </tr>
         <tr>
           <td><span class="method ws">WS</span></td>
           <td class="endpoint">/voice-stream</td>
-          <td>Twilio media stream &mdash; real-time STT, agent processing, TTS</td>
+          <td>Legacy Twilio media stream (WebSocket) &mdash; real-time STT via VoiceBox, agent processing, TTS</td>
         </tr>
         <tr>
           <td><span class="method post">POST</span></td>
           <td class="endpoint">/call-status</td>
           <td>Post-call status callback &mdash; sends follow-up SMS</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Voice &mdash; Outbound</h3>
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="endpoint">/outbound-twiml</td>
+          <td>Twilio webhook when outbound call is answered &mdash; delivers TTS message + DTMF menu (1=AI chat, 2=connect Krishna, 3=hangup)</td>
+        </tr>
+        <tr>
+          <td><span class="method post">POST</span></td>
+          <td class="endpoint">/outbound-action</td>
+          <td>Handles DTMF digit from outbound call recipient &mdash; routes to AI conversation, live transfer, or goodbye</td>
         </tr>
       </tbody>
     </table>
