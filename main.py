@@ -65,7 +65,7 @@ async def incoming_call(request: Request):
 <Response>
     <Say voice="Polly.Joanna">
         Welcome to CertiHomes! What would you like to do?
-        You can say property search, market reports, C M A, or just ask me anything.
+        You can say property search, market reports, C M A, or ask anything else on your mind.
         For example, you can give me an address for a property snapshot or C M A,
         a city name for market stats, or ask me to email information to someone.
         Please note, we currently only cover Central Jersey and metro Atlanta.
