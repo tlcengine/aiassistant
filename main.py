@@ -152,7 +152,9 @@ async def voice_respond(request: Request):
             "Summarize data verbally. After giving info, ask if they want it emailed. "
             "Available tools: search_listings, search_portal_listings, get_market_report, "
             "send_market_report_email, send_email, get_tax_data, get_forecast, cma_quick_lookup, "
-            "cma_full_report, make_outbound_call, submit_browser_task. "
+            "cma_full_report, make_outbound_call, transfer_to_krishna, submit_browser_task. "
+            "IMPORTANT: If the caller says 'connect me to Krishna' or 'talk to a person', use transfer_to_krishna "
+            "and start your reply with '__TRANSFER_TO_KRISHNA__' followed by a brief farewell. "
             "For property lookups, prefer cma_quick_lookup — use its voice_summary field. "
             "Keep it conversational and warm. Never say URLs aloud."
         )
@@ -241,6 +243,24 @@ async def voice_check(request: Request):
 
     # Agent response is ready! Clean up and deliver
     pending_voice_responses.pop(call_sid, None)
+
+    # Check if agent wants to transfer the call to Krishna
+    if reply.startswith("__TRANSFER_TO_KRISHNA__"):
+        from tools.outbound_call import KRISHNA_PHONE
+        # Strip the transfer marker and get any farewell message
+        farewell = reply.replace("__TRANSFER_TO_KRISHNA__", "").strip()
+        if not farewell:
+            farewell = "Connecting you to Krishna now. Please hold."
+        import html
+        safe_farewell = html.escape(farewell)
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Google.en-US-Neural2-F">{safe_farewell}</Say>
+    <Dial callerId="{get_settings().twilio_phone_number}">
+        <Number>{KRISHNA_PHONE}</Number>
+    </Dial>
+</Response>"""
+        return Response(content=twiml, media_type="application/xml")
 
     import html
     safe_reply = html.escape(reply)

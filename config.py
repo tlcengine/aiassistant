@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     # TLCengine V3 API (CJMLS property portal backend)
     tlcengine_api_url: str = "https://api.tlcengine.com/V3/api/km"
+    tlcengine_api_token: str = "C40A98B6-587C-481A-9FFB-A00E51E8D29A"
 
     # VoiceBox (local on geo2)
     voicebox_url: str = "http://127.0.0.1:17493"

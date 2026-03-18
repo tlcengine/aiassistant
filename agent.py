@@ -288,6 +288,14 @@ TOOLS = [
         },
     },
     {
+        "name": "transfer_to_krishna",
+        "description": "Transfer the current phone call directly to Krishna Malyala. Use when the caller says 'connect me to Krishna', 'transfer me', 'talk to a person', 'speak to an agent', or 'let me talk to someone'. This immediately dials Krishna's phone and connects the caller.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
         "name": "make_outbound_call",
         "description": "Make an outbound phone call to a contact. Delivers a message via TTS, then offers the recipient options: speak with AI assistant, connect with Krishna, or hang up. If only a contact_name is provided (no phone), the CRM is searched for their number.",
         "input_schema": {
@@ -351,6 +359,7 @@ async def _search_portal_listings(query: str) -> dict:
                     "zipcode": 1,
                     "county": 1,
                 },
+                headers={"Authorization": f"Bearer {settings.tlcengine_api_token}"},
             )
             resp.raise_for_status()
             suggestions = resp.json()
@@ -484,6 +493,7 @@ TOOL_HANDLERS = {
     "cma_full_report": _cma_full_report,
     "start_browser_task": _start_browser_task,
     "make_outbound_call": make_outbound_call,
+    "transfer_to_krishna": lambda: {"status": "transferring", "message": "Connecting caller to Krishna now"},
 }
 
 
