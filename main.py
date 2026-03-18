@@ -87,23 +87,106 @@ async def health():
 
 @app.post("/incoming-call")
 async def incoming_call(request: Request):
-    """Twilio webhook — answers the call and connects to AI assistant directly.
+    """Twilio webhook — answers the call with speech-based Gather loop.
 
-    Uses Google neural voice for speed + naturalness.
-    Greeting is short so caller can start talking quickly.
-    <Gather> enables barge-in (caller can interrupt anytime).
+    Uses Twilio's native speech recognition + Google neural TTS.
+    This approach is more reliable than WebSocket streaming and gives
+    natural barge-in support.
     """
-    host = request.headers.get("host", "aiassistant.certihomes.com")
-    # Short, fast greeting → immediately connect to voice stream for 2-way conversation
-    # Using Google Chirp HD voice — much faster and more natural than Polly
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Google.en-US-Journey-F">
-        Hey there! Welcome to CertiHomes. I can help with property lookups, market reports, C M A's, or really anything on your mind. Just talk to me like a friend. What can I do for you?
-    </Say>
-    <Connect>
-        <Stream url="wss://{host}/voice-stream"/>
-    </Connect>
+    <Gather input="speech" action="/voice-respond" method="POST"
+            speechTimeout="2" speechModel="experimental_conversations"
+            enhanced="true" language="en-US">
+        <Say voice="Google.en-US-Journey-F">
+            Hey there! Welcome to CertiHomes. I can help with property lookups, market reports, C M A's, or really anything on your mind. Just talk to me like a friend. What can I do for you?
+        </Say>
+    </Gather>
+    <Say voice="Google.en-US-Journey-F">I didn't catch that. Let me know how I can help!</Say>
+    <Redirect>/incoming-call</Redirect>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
+
+
+# In-memory voice conversation store (keyed by CallSid)
+voice_conversations: dict[str, list[dict]] = {}
+
+
+@app.post("/voice-respond")
+async def voice_respond(request: Request):
+    """Process caller speech via AI agent and respond with TTS.
+
+    This is the core conversation loop:
+    1. Twilio transcribes speech → sends SpeechResult here
+    2. We run the AI agent on the transcript
+    3. Respond with <Say> + loop back to <Gather> for next turn
+    Barge-in is automatic — caller can interrupt <Say> anytime.
+    """
+    form = await request.form()
+    transcript = form.get("SpeechResult", "").strip()
+    confidence = form.get("Confidence", "0")
+    call_sid = form.get("CallSid", "unknown")
+    caller = form.get("From", "")
+
+    logger.info(f"Caller said: '{transcript}' (confidence: {confidence}, CallSid: {call_sid})")
+
+    if not transcript:
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="/voice-respond" method="POST"
+            speechTimeout="2" speechModel="experimental_conversations"
+            enhanced="true" language="en-US">
+        <Say voice="Google.en-US-Journey-F">Sorry, I didn't catch that. Could you say that again?</Say>
+    </Gather>
+    <Say voice="Google.en-US-Journey-F">I'm still here if you need anything!</Say>
+    <Redirect>/incoming-call</Redirect>
+</Response>"""
+        return Response(content=twiml, media_type="application/xml")
+
+    # Get or create conversation history for this call
+    history = voice_conversations.setdefault(call_sid, [])
+
+    # Pre-seed with voice context on first turn
+    if not history:
+        context = (
+            "[SYSTEM CONTEXT]: This is a PHONE call. Keep ALL responses concise — 1-3 sentences max. "
+            "Speak naturally like a helpful friend. Never use markdown, bullets, lists, or URLs. "
+            "Summarize data points verbally. After giving info, ask if they want it emailed. "
+            "Available tools: search_listings, search_portal_listings, get_market_report, "
+            "send_market_report_email, send_email, get_tax_data, get_forecast, cma_quick_lookup, "
+            "cma_full_report, make_outbound_call, submit_browser_task. "
+            "For property lookups, prefer cma_quick_lookup — use its voice_summary field. "
+            "Keep it conversational and warm."
+        )
+        history.append({"role": "user", "content": context})
+        history.append({"role": "assistant", "content": "Ready to help!"})
+
+    # Run the AI agent
+    try:
+        reply, tool_results = await run_agent(transcript, history)
+        logger.info(f"Agent reply ({len(reply)} chars): {reply[:100]}...")
+    except Exception:
+        logger.exception("Agent error during voice call")
+        reply = "I ran into an issue processing that. Could you try again?"
+
+    # Escape XML special chars in the reply
+    import html
+    safe_reply = html.escape(reply)
+
+    # Build response: Say the reply, then Gather for next turn
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Gather input="speech" action="/voice-respond" method="POST"
+            speechTimeout="3" speechModel="experimental_conversations"
+            enhanced="true" language="en-US">
+        <Say voice="Google.en-US-Journey-F">{safe_reply}</Say>
+    </Gather>
+    <Say voice="Google.en-US-Journey-F">Are you still there? Feel free to ask me anything else, or you can hang up anytime.</Say>
+    <Gather input="speech" action="/voice-respond" method="POST"
+            speechTimeout="5" speechModel="experimental_conversations"
+            enhanced="true" language="en-US">
+        <Say voice="Google.en-US-Journey-F">I'm here whenever you're ready!</Say>
+    </Gather>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
@@ -395,13 +478,16 @@ async def outbound_action(request: Request):
     host = request.headers.get("host", "aiassistant.certihomes.com")
 
     if digit == "1":
-        # Connect to the AI voice assistant via WebSocket stream
-        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+        # Start AI conversation via Gather speech loop (same as inbound calls)
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Google.en-US-Journey-F">Connecting you to our AI assistant now. Go ahead and speak after the tone.</Say>
-    <Connect>
-        <Stream url="wss://{host}/voice-stream"/>
-    </Connect>
+    <Gather input="speech" action="/voice-respond" method="POST"
+            speechTimeout="2" speechModel="experimental_conversations"
+            enhanced="true" language="en-US">
+        <Say voice="Google.en-US-Journey-F">Great! I'm all ears. What would you like to know? You can ask me about properties, market stats, or anything else.</Say>
+    </Gather>
+    <Say voice="Google.en-US-Journey-F">I didn't catch that. Let me know how I can help!</Say>
+    <Redirect>/incoming-call</Redirect>
 </Response>"""
     elif digit == "2":
         # Transfer to Krishna's phone
