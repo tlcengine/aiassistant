@@ -243,6 +243,18 @@ TOOLS = [
         },
     },
     {
+        "name": "start_browser_task",
+        "description": "Start an async browser automation task. Use for anything that requires web browsing: booking reservations, researching websites, filling forms, checking competitor listings, web searches, etc. The task runs in the background and results are emailed to the user. Ask for their email first if not provided.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {"type": "string", "description": "Detailed description of what to do on the web"},
+                "user_email": {"type": "string", "description": "Email to send results to"},
+            },
+            "required": ["description"],
+        },
+    },
+    {
         "name": "cma_quick_lookup",
         "description": "Quick property lookup — returns tax data, MLS listing, nearby sold comps, demographics, flood risk, and a voice-ready summary. Use for phone call property lookups or quick address checks. Returns a voice_summary field ready for TTS.",
         "input_schema": {
@@ -359,6 +371,23 @@ async def _search_portal_listings(query: str) -> dict:
         return {"query": query, "results": [], "error": str(e), "fallback": "Use search_listings tool instead"}
 
 
+async def _start_browser_task(description: str, user_email: str | None = None) -> dict:
+    """Create a browser automation task in the queue."""
+    from browser.models import BrowserTask
+    from crm.database import async_session
+    task = BrowserTask(description=description, user_email=user_email)
+    async with async_session() as db:
+        db.add(task)
+        await db.commit()
+        await db.refresh(task)
+    return {
+        "task_id": task.task_id,
+        "short_id": task.short_id,
+        "status": "pending",
+        "message": f"Task queued! I'll email results to {user_email} when done." if user_email else "Task queued!",
+    }
+
+
 async def _cma_quick_lookup(address: str, city: str = "", state: str = "NJ") -> dict:
     """Quick property lookup via CMA API."""
     import httpx
@@ -439,6 +468,7 @@ TOOL_HANDLERS = {
     "schedule_callback": close_crm.schedule_callback,
     "cma_quick_lookup": _cma_quick_lookup,
     "cma_full_report": _cma_full_report,
+    "start_browser_task": _start_browser_task,
 }
 
 

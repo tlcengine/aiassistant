@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 SCOPES = [
     "https://www.googleapis.com/auth/contacts.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.modify",
 ]
 
 TOKEN_PATH = Path.home() / ".config" / "aiassistant" / "google_token.json"
