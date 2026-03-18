@@ -301,8 +301,12 @@ async def voice_stream(ws: WebSocket):
             audio_buffer.clear()
             silence_frames = 0
 
-            # 1. Speech-to-text
-            transcript = await speech_to_text(chunk)
+            # 1. Speech-to-text (with error recovery — don't crash the call)
+            try:
+                transcript = await speech_to_text(chunk)
+            except Exception as stt_err:
+                logger.warning(f"STT failed (continuing): {stt_err}")
+                continue
             if not transcript.strip():
                 continue
             logger.info(f"Caller said: {transcript}")
