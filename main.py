@@ -235,19 +235,20 @@ async def voice_check(request: Request):
     import html
     safe_reply = html.escape(reply)
 
+    # Use en-US-Neural2-F for consistent warm female voice (matches Jenny Neural)
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="/voice-respond" method="POST"
             speechTimeout="3" speechModel="experimental_conversations"
             enhanced="true" language="en-US">
-        <Say voice="Google.en-US-Journey-F">{safe_reply}</Say>
+        <Say voice="Google.en-US-Neural2-F">{safe_reply}</Say>
     </Gather>
-    <Pause length="5"/>
-    <Say voice="Google.en-US-Journey-F">Are you still there? I'm here if you need anything else.</Say>
+    <Pause length="4"/>
+    <Play>https://aiassistant.certihomes.com/voice/ack_still_here.mp3</Play>
     <Gather input="speech" action="/voice-respond" method="POST"
-            speechTimeout="5" speechModel="experimental_conversations"
+            speechTimeout="8" speechModel="experimental_conversations"
             enhanced="true" language="en-US">
-        <Say voice="Google.en-US-Journey-F">Just say something when you're ready!</Say>
+        <Play>https://aiassistant.certihomes.com/thinking.wav</Play>
     </Gather>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
@@ -521,13 +522,14 @@ async def outbound_twiml(request: Request):
 
     greeting = f"Hi {contact_name}, " if contact_name else "Hi, "
 
+    # Dynamic message must use <Say>, but options use pre-recorded for consistency
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Say voice="Google.en-US-Journey-F">{greeting}this is CertiHomes AI Assistant calling. {message}</Say>
     <Gather numDigits="1" action="/outbound-action" method="POST">
-        <Say voice="Google.en-US-Journey-F">Press 1 to speak with our AI assistant. Press 2 to connect with Krishna. Or you can hang up.</Say>
+        <Play>https://aiassistant.certihomes.com/voice/outbound_options.mp3</Play>
     </Gather>
-    <Say voice="Google.en-US-Journey-F">Thanks for your time. Goodbye!</Say>
+    <Play>https://aiassistant.certihomes.com/voice/outbound_goodbye.mp3</Play>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
