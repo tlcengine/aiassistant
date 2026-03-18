@@ -5,7 +5,7 @@
 - **Server:** geo2.tlcengine.com (71.172.1.247)
 - **Domain:** aiassistant.certihomes.com
 - **Port:** 8005 (FastAPI/uvicorn)
-- **GPU:** RTX 5090 on geo2, nvidia-container-toolkit installed, needs reboot for Docker GPU access
+- **GPU:** RTX 5090 on geo2 (32GB VRAM, CUDA 13.1, Driver 590.48.01) — Docker GPU working with `--runtime=nvidia`
 
 ## Quick Reference
 
@@ -208,8 +208,13 @@ edge-tts --voice en-US-JennyNeural --text "Your text here" --write-media static/
 - **MongoDB auth:** Password must be in `/home/krish/marketstats/backend/.env` as `MONGODB_PASSWORD`
 - **MLS field names:** MarketStats API returns lowercase (address, close_price), Bridge/RETS uses CamelCase — `tools/mls.py` handles both
 - **ETL cron:** Runs hourly (`0 * * * *`) for CJMLS/FMLS data sync
-- **VoiceBox blank page:** Needs geo2 reboot to fix
-- **GPU Docker:** RTX 5090 installed, nvidia-container-toolkit installed, needs reboot for Docker GPU support
+- **VoiceBox blank page after reboot:** Copy frontend dist files into container:
+  ```bash
+  docker cp app/dist/index.html voicebox:/app/frontend/index.html
+  docker cp app/dist/assets/. voicebox:/app/frontend/assets/
+  ```
+- **GPU Docker:** RTX 5090 working with `--runtime=nvidia` (nvidia is default runtime). The `--gpus all` flag has a known bug with driver 590 + nvidia-container-toolkit 1.19 — does not affect us since nvidia is the default runtime
+- **VoiceBox GPU rebuild:** Currently running in CPU mode. Rebuild with `docker-compose up -d --build` to enable GPU acceleration
 
 ## Testing
 ```bash

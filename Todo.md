@@ -48,15 +48,24 @@
 - [x] Capabilities guide page (capabilities.html)
 - [x] Widget demo page (widget-demo.html)
 
+## Recently Completed (2026-03-18 Post-Reboot)
+- [x] Reboot geo2 for GPU Docker support — completed successfully
+- [x] VoiceBox blank page fix — fixed by copying frontend dist files into container
+- [x] GPU Docker support — working with `--runtime=nvidia` (nvidia is default runtime, RTX 5090 detected, 32GB VRAM, CUDA 13.1)
+- [x] Pre-recorded voice files regenerated with edge-tts JennyNeural (+8% rate)
+- [x] Varied fillers and hold music created (5 general, 3 CMA, 3 market, 3 search, 2 email, 2 tax, 3 hello, 3 thanks)
+- [x] Hold music: 15s WAV with C-Am-F-G chord progression
+- [x] Outbound calls verified working (Twilio 201 response confirmed)
+- [x] All 18 PM2 apps online after reboot
+- [x] End-to-end voice call testing with all tools (CMA, outbound, browser tasks)
+
 ## In Progress
 - [ ] CRM deal pipeline Kanban UI with drag-and-drop cards (backend done, frontend pending)
 
 ## Pending
-- [ ] Reboot geo2 for GPU Docker support (RTX 5090 installed, nvidia-container-toolkit installed, needs reboot)
-- [ ] Rebuild VoiceBox with GPU acceleration after reboot
+- [ ] VoiceBox GPU rebuild — currently CPU mode, rebuild with `docker-compose up -d --build`
+- [ ] `--gpus all` Docker flag fix (known driver 590 + toolkit 1.19 compat bug, low priority — `--runtime=nvidia` works)
 - [ ] Switch model back to Claude Sonnet when quota resets (currently gemini-3-flash)
-- [ ] End-to-end voice call testing with all tools (CMA, outbound, browser tasks)
-- [ ] VoiceBox blank page fix (needs geo2 reboot)
 - [ ] Google OAuth scopes expansion (Gmail read/send, Drive, Contacts, Calendar)
 - [ ] Email analysis engine for CRM relationship scoring
 - [ ] Contact detail page with activity timeline and deals
@@ -74,5 +83,5 @@
 - Port 8005 occasionally sticks on restart — use `fuser -k -9 8005/tcp`
 - Claude Sonnet quota exhausted — currently using gemini-3-flash as fallback
 - Systemd restarts need sudo password
-- VoiceBox web UI blank page (needs reboot)
-- GPU Docker not working yet (needs reboot for nvidia-container-toolkit)
+- `--gpus all` Docker flag has known bug with NVIDIA driver 590 + toolkit 1.19 (use `--runtime=nvidia` instead)
+- VoiceBox running in CPU mode until GPU rebuild

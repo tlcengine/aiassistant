@@ -302,6 +302,45 @@ aiassistant/
     └── nginx-aiassistant.conf  # Nginx reverse proxy config
 ```
 
+## System Status (Post-Reboot — 2026-03-18)
+
+geo2.tlcengine.com rebooted successfully. Current state:
+
+| Component | Status |
+|-----------|--------|
+| aiassistant systemd service | Running on port 8005, health OK |
+| PM2 apps (18 total) | All online |
+| Docker | Running, VoiceBox container healthy |
+| VoiceBox | Healthy (CPU mode), frontend serving HTML |
+| MarketStats API | Running (30,823 Edison listings) |
+| NVIDIA RTX 5090 | Detected, 32GB VRAM, CUDA 13.1, Driver 590.48.01 |
+| Docker GPU | Works with `--runtime=nvidia` (nvidia is default runtime) |
+| Pre-recorded voice files | 42+ MP3s regenerated with edge-tts JennyNeural (+8% rate) |
+| Hold music | 15s WAV, C-Am-F-G chord progression |
+| Outbound calls | Working (Twilio 201 confirmed) |
+| Chat widget | Live at /widget.js, /widget-demo.html |
+| Capabilities page | Live at /capabilities.html (v2.0) |
+| Browser agent | Playwright headless Chrome active |
+| CRM | PostgreSQL on port 5432 |
+
+**Known issues:**
+- `--gpus all` Docker flag has a known bug with driver 590 + toolkit 1.19 — does not affect us since `nvidia` is the default runtime
+- VoiceBox currently running in CPU mode — needs GPU rebuild (`docker-compose up -d --build`)
+- Claude Sonnet quota exhausted — using `gemini-3-flash` as fallback
+
+### VoiceBox Frontend Fix (After Reboot)
+
+After a geo2 reboot, VoiceBox may show a blank page. Fix by copying the frontend dist files into the container:
+
+```bash
+docker cp app/dist/index.html voicebox:/app/frontend/index.html
+docker cp app/dist/assets/. voicebox:/app/frontend/assets/
+```
+
+### GPU Docker Workaround
+
+The `--gpus all` flag has a known compatibility bug with NVIDIA driver 590 + nvidia-container-toolkit 1.19. Use `--runtime=nvidia` instead, which works correctly since `nvidia` is configured as the default Docker runtime.
+
 ## Deployment
 
 **Server:** geo2.tlcengine.com (71.172.1.247, Ubuntu)

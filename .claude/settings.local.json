@@ -226,7 +226,16 @@
       "Bash(docker-compose up:*)",
       "Bash(curl -s --max-time 30 -X POST https://aiassistant.certihomes.com/chat -H \"Content-Type: application/json\" -d '{\"\"\"\"message\"\"\"\":\"\"\"\"Call 808-876-0329 and say: Hey Krishna! Big upgrade! The voice now uses pre-recorded responses for instant playback, hold music while I think, and a much smoother conversation flow. Press 1 and try asking about homes in Edison New Jersey!\"\"\"\",\"\"\"\"conversation_id\"\"\"\":\"\"\"\"voice-test-6\"\"\"\"}')",
       "Bash(sudo -S journalctl -u aiassistant --since \"20 min ago\" --no-pager)",
-      "Bash(git -C /home/krish/aiassistant diff --stat)"
+      "Bash(git -C /home/krish/aiassistant diff --stat)",
+      "Bash(sudo -S reboot)",
+      "Bash(ssh -o ConnectTimeout=10 krish@geo.tlcengine.com \"uptime\")",
+      "Bash(ssh -o ConnectTimeout=10 krish@172.26.1.151 \"uptime && hostname\")",
+      "Bash(ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no krish@172.26.1.151 \"uptime && hostname\")",
+      "Bash(sudo -S systemctl status aiassistant --no-pager)",
+      "Bash(sudo -S systemctl status docker --no-pager)",
+      "Bash(nvidia-smi)",
+      "Bash(docker run:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''name'''',''''?''''\\), d.get\\(''''version'''',''''?''''\\)\\)\")"
     ]
   }
 }
