@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CertiHomes AI Widget Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        nav {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        nav .brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        nav .links a {
+            color: #64748b;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-size: 0.9375rem;
+        }
+
+        nav .links a:hover { color: #3b82f6; }
+
+        .hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .content {
+            max-width: 800px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+
+        .content h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 1rem;
+        }
+
+        .content p {
+            color: #475569;
+            margin-bottom: 1.5rem;
+        }
+
+        .install-box {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            overflow-x: auto;
+        }
+
+        .install-box .label {
+            color: #94a3b8;
+            font-size: 0.8125rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .install-box code {
+            display: block;
+            color: #38bdf8;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.9375rem;
+            white-space: pre;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 0;
+        }
+
+        .arrow-indicator {
+            position: fixed;
+            bottom: 90px;
+            right: 28px;
+            color: #64748b;
+            font-size: 0.875rem;
+            animation: point 2s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 99998;
+        }
+
+        @keyframes point {
+            0%, 100% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(-8px); opacity: 0.6; }
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+            font-size: 0.875rem;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="brand">Your Website</div>
+        <div class="links">
+            <a href="#">Home</a>
+            <a href="#">Listings</a>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h1>CertiHomes AI Widget</h1>
+        <p>An embeddable chat widget that adds AI-powered real estate assistance to any website with a single line of code.</p>
+    </div>
+
+    <div class="content">
+        <h2>How to Install</h2>
+        <p>Add the CertiHomes AI Assistant to any website by including one script tag before the closing <code>&lt;/body&gt;</code> tag:</p>
+
+        <div class="install-box">
+            <div class="label">Add this to any page</div>
+            <code>&lt;script src="https://aiassistant.certihomes.com/widget.js"&gt;&lt;/script&gt;</code>
+        </div>
+
+        <p>That's it! The widget will automatically appear as a floating chat bubble in the bottom-right corner of your page. Click it to try it out now.</p>
+
+        <h2>Features</h2>
+        <div class="features">
+            <div class="feature-card">
+                <h3>Zero Config</h3>
+                <p>Just add the script tag. No API keys, no setup, no dependencies needed.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Shadow DOM</h3>
+                <p>Completely isolated CSS via Shadow DOM. No conflicts with your existing styles.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Mobile Responsive</h3>
+                <p>Automatically adapts to full-width on screens under 768px.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Dark Theme</h3>
+                <p>Sleek dark interface that looks great on any website design.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Real-Time AI</h3>
+                <p>Powered by Claude, with access to MLS data, market stats, and property info.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Markdown Support</h3>
+                <p>AI responses render bold, italic, and links for rich formatting.</p>
+            </div>
+        </div>
+
+        <h2>Optional Configuration</h2>
+        <p>You can customize the widget position and accent color using data attributes:</p>
+
+        <div class="install-box">
+            <div class="label">Custom position and color</div>
+            <code>&lt;script src="https://aiassistant.certihomes.com/widget.js"
+  data-position="bottom-left"
+  data-color="#38bdf8"&gt;
+&lt;/script&gt;</code>
+        </div>
+    </div>
+
+    <div class="arrow-indicator">Try the widget &darr;</div>
+
+    <footer>
+        CertiHomes AI Widget Demo &mdash; This page demonstrates the embeddable chat widget.
+    </footer>
+
+    <!-- This is the only line needed to add the CertiHomes AI Assistant widget -->
+    <script src="widget.js"></script>
+</body>
+</html>
