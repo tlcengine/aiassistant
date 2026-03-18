@@ -283,6 +283,49 @@
       cursor: not-allowed;
     }
 
+    .ch-mic-btn {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ch-mic-btn:hover {
+      color: #e2e8f0;
+      border-color: #64748b;
+    }
+
+    .ch-mic-btn.ch-recording {
+      color: #ef4444;
+      border-color: #ef4444;
+      animation: ch-mic-pulse 1s infinite;
+    }
+
+    @keyframes ch-mic-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+
+    .ch-voice-status {
+      font-size: 11px;
+      color: #94a3b8;
+      text-align: center;
+      padding: 4px 8px;
+      display: none;
+    }
+
+    .ch-voice-status.ch-visible {
+      display: block;
+    }
+
     .ch-powered {
       text-align: center;
       padding: 6px;
@@ -332,8 +375,10 @@
     <div class="ch-messages" id="chMessages">
       <div class="ch-msg ch-msg-ai">Hi! I'm the CertiHomes AI assistant. How can I help you today?</div>
     </div>
+    <div class="ch-voice-status" id="chVoiceStatus"></div>
     <div class="ch-input-area">
-      <input class="ch-input" type="text" placeholder="Type a message..." autocomplete="off"/>
+      <button class="ch-mic-btn" aria-label="Voice input" title="Hold to talk">🎙</button>
+      <input class="ch-input" type="text" placeholder="Type or hold 🎙 to talk..." autocomplete="off"/>
       <button class="ch-send-btn">Send</button>
     </div>
     <div class="ch-powered"><a href="https://certihomes.com" target="_blank" rel="noopener">Powered by CertiHomes</a></div>
@@ -345,9 +390,131 @@
   const messagesEl = panel.querySelector('.ch-messages');
   const inputEl = panel.querySelector('.ch-input');
   const sendBtn = panel.querySelector('.ch-send-btn');
+  const micBtn = panel.querySelector('.ch-mic-btn');
+  const voiceStatus = panel.querySelector('#chVoiceStatus');
 
   let isOpen = false;
   let isSending = false;
+
+  // --- Voice (STT via browser SpeechRecognition + TTS via browser speechSynthesis) ---
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let isRecording = false;
+
+  function setVoiceStatus(text) {
+    voiceStatus.textContent = text;
+    voiceStatus.classList.toggle('ch-visible', !!text);
+  }
+
+  function speakReply(text) {
+    if (!window.speechSynthesis) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    // Prefer a natural female voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v =>
+      v.name.includes('Samantha') || v.name.includes('Google US English') ||
+      v.name.includes('Microsoft Zira') || v.name.includes('Karen')
+    ) || voices.find(v => v.lang.startsWith('en') && v.name.includes('Female'))
+      || voices[0];
+    if (preferred) utterance.voice = preferred;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = function() {
+      isRecording = true;
+      micBtn.classList.add('ch-recording');
+      setVoiceStatus('🎙 Listening...');
+    };
+
+    recognition.onresult = function(event) {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      inputEl.value = transcript;
+      if (event.results[0] && event.results[0].isFinal) {
+        setVoiceStatus('');
+      } else {
+        setVoiceStatus('🎙 ' + transcript);
+      }
+    };
+
+    recognition.onend = function() {
+      isRecording = false;
+      micBtn.classList.remove('ch-recording');
+      setVoiceStatus('');
+      // Auto-send if we got text
+      const text = inputEl.value.trim();
+      if (text) {
+        sendMessageVoice(text);
+      }
+    };
+
+    recognition.onerror = function(event) {
+      isRecording = false;
+      micBtn.classList.remove('ch-recording');
+      if (event.error === 'not-allowed') {
+        setVoiceStatus('⚠ Microphone access denied');
+      } else if (event.error !== 'aborted') {
+        setVoiceStatus('⚠ ' + event.error);
+      }
+      setTimeout(() => setVoiceStatus(''), 3000);
+    };
+
+    micBtn.addEventListener('click', function() {
+      if (isRecording) {
+        recognition.stop();
+      } else {
+        // Stop any ongoing speech
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        recognition.start();
+      }
+    });
+  } else {
+    // No speech recognition support — hide mic button
+    micBtn.style.display = 'none';
+  }
+
+  async function sendMessageVoice(text) {
+    // Same as sendMessage but also speaks the reply
+    if (!text || isSending) return;
+    isSending = true;
+    sendBtn.disabled = true;
+    inputEl.value = '';
+    addMessage(text, 'user');
+    showTyping();
+
+    try {
+      const resp = await fetch(API_URL + '/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, conversation_id: conversationId })
+      });
+      const data = await resp.json();
+      hideTyping();
+      const reply = data.reply || 'Sorry, I could not generate a response.';
+      addMessage(reply, 'ai');
+      // Speak the reply aloud
+      speakReply(reply);
+    } catch (err) {
+      hideTyping();
+      addMessage('Sorry, something went wrong. Please try again.', 'ai');
+    } finally {
+      isSending = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
 
   // Toggle panel
   function togglePanel() {

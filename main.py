@@ -1,5 +1,6 @@
 """AI Assistant — FastAPI server handling Twilio voice calls with Claude agent."""
 
+import asyncio
 import json
 import logging
 
@@ -18,6 +19,24 @@ from voice.voicebox_client import speech_to_text, text_to_speech
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Pre-load thinking music audio for streaming during agent processing
+_thinking_audio: bytes | None = None
+
+def _load_thinking_audio() -> bytes:
+    """Load and convert thinking.wav to mu-law for Twilio streaming."""
+    global _thinking_audio
+    if _thinking_audio is not None:
+        return _thinking_audio
+    import audioop, wave
+    try:
+        with wave.open("static/thinking.wav", "rb") as f:
+            pcm = f.readframes(f.getnframes())
+        _thinking_audio = pcm
+    except Exception:
+        logger.warning("Could not load thinking.wav, using silence")
+        _thinking_audio = b'\x00' * 16000  # 1s silence fallback
+    return _thinking_audio
 
 from crm.database import init_db
 from crm.routes import router as crm_router
@@ -68,17 +87,19 @@ async def health():
 
 @app.post("/incoming-call")
 async def incoming_call(request: Request):
-    """Twilio webhook — answers the call and connects to AI assistant directly."""
+    """Twilio webhook — answers the call and connects to AI assistant directly.
+
+    Uses Google neural voice for speed + naturalness.
+    Greeting is short so caller can start talking quickly.
+    <Gather> enables barge-in (caller can interrupt anytime).
+    """
     host = request.headers.get("host", "aiassistant.certihomes.com")
+    # Short, fast greeting → immediately connect to voice stream for 2-way conversation
+    # Using Google Chirp HD voice — much faster and more natural than Polly
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Joanna">
-        Welcome to CertiHomes! What would you like to do?
-        You can say property search, market reports, C M A, or ask anything else on your mind.
-        For example, you can give me an address for a property snapshot or C M A,
-        a city name for market stats, or ask me to email information to someone.
-        Please note, we currently only cover Central Jersey and metro Atlanta.
-        Go ahead, I'm listening!
+    <Say voice="Google.en-US-Journey-F">
+        Hey there! Welcome to CertiHomes. I can help with property lookups, market reports, C M A's, or really anything on your mind. Just talk to me like a friend. What can I do for you?
     </Say>
     <Connect>
         <Stream url="wss://{host}/voice-stream"/>
@@ -89,14 +110,123 @@ async def incoming_call(request: Request):
 
 @app.websocket("/voice-stream")
 async def voice_stream(ws: WebSocket):
-    """Handle the Twilio media stream — STT → Agent → TTS loop."""
+    """Handle the Twilio media stream — STT → Agent → TTS loop.
+
+    Key features for natural conversation:
+    - Smaller audio buffer (1.2s) for faster response
+    - Silence detection to trigger processing early
+    - Thinking music plays while agent is processing
+    - Quick "Got it!" confirmation before long tasks
+    - Barge-in: new audio clears current playback
+    """
     await ws.accept()
     conversation_history: list[dict] = []
     stream_sid: str | None = None
     audio_buffer = bytearray()
     caller_phone: str | None = None
+    is_playing = False  # Track if we're currently playing audio back
+    silence_frames = 0  # Count consecutive silent frames
 
     logger.info("Voice stream connected")
+
+    # Use Aria voice for TTS (energetic, conversational)
+    VOICE_PROFILE = "cfe9ef50-307d-42c9-bd84-235ecc812aec"  # Aria
+
+    async def send_audio(pcm_data: bytes):
+        """Stream PCM audio back to Twilio."""
+        nonlocal is_playing
+        if stream_sid:
+            is_playing = True
+            media_msg = encode_twilio_media(pcm_data, stream_sid)
+            await ws.send_text(media_msg)
+            is_playing = False
+
+    async def send_clear():
+        """Send clear message to stop any playing audio (barge-in)."""
+        if stream_sid:
+            await ws.send_text(json.dumps({
+                "event": "clear",
+                "streamSid": stream_sid,
+            }))
+
+    async def play_thinking_music():
+        """Loop thinking music while agent processes."""
+        thinking_pcm = _load_thinking_audio()
+        if stream_sid and thinking_pcm:
+            media_msg = encode_twilio_media(thinking_pcm, stream_sid)
+            await ws.send_text(media_msg)
+
+    async def send_quick_ack(transcript: str):
+        """Send a smart, context-aware voice acknowledgment with details from the transcript.
+
+        Instead of generic "Got it!", generates dynamic phrases like:
+        "Let me pull up the CMA for 100 River Road in Piscataway!"
+        "Looking up homes in Edison for you!"
+        """
+        import re
+        lower = transcript.lower()
+        ack = "Got it, one moment!"
+
+        # Extract location/address from transcript for personalized ack
+        # Common patterns: "123 Main St in Edison" / "Edison NJ" / "for Piscataway"
+        address_match = re.search(r'(\d+\s+[\w\s]+(?:street|st|avenue|ave|road|rd|drive|dr|lane|ln|court|ct|boulevard|blvd|way|place|pl))', lower)
+        city_match = re.search(r'(?:in|for|about)\s+([a-z\s]+?)(?:\s+(?:nj|new jersey|ga|georgia|ny|new york)|\s*[,.]|\s*$)', lower)
+        city_name = ""
+        if city_match:
+            city_name = city_match.group(1).strip().title()
+
+        if "cma" in lower or "value" in lower or "worth" in lower:
+            if address_match:
+                addr = address_match.group(1).strip().title()
+                ack = f"Let me pull up the CMA for {addr}!"
+            elif city_name:
+                ack = f"Running a CMA analysis for {city_name}!"
+            else:
+                ack = "Running that CMA analysis now!"
+        elif "market" in lower or "stats" in lower or "report" in lower:
+            if city_name:
+                ack = f"Pulling up market stats for {city_name}!"
+            else:
+                ack = "Pulling up those market stats!"
+        elif "search" in lower or "homes" in lower or "house" in lower or "bedroom" in lower:
+            if city_name:
+                ack = f"Searching for homes in {city_name}!"
+            else:
+                ack = "Searching listings for you!"
+        elif "email" in lower or "send" in lower:
+            ack = "On it, sending that right now!"
+        elif "call" in lower and ("them" in lower or "him" in lower or "her" in lower):
+            ack = "Setting up that call!"
+        elif "tax" in lower or "assessment" in lower:
+            if address_match:
+                addr = address_match.group(1).strip().title()
+                ack = f"Looking up tax data for {addr}!"
+            else:
+                ack = "Checking the tax records!"
+        elif "forecast" in lower or "predict" in lower:
+            ack = "Running the price forecast!"
+        elif address_match or city_name:
+            # They mentioned a location but no specific action — property lookup
+            loc = address_match.group(1).strip().title() if address_match else city_name
+            ack = f"Let me look into {loc} for you!"
+        else:
+            # General question — keep it casual
+            ack = "Great question, let me think about that!"
+
+        try:
+            ack_audio = await text_to_speech(ack, profile_id=VOICE_PROFILE)
+            await send_audio(ack_audio)
+        except Exception:
+            logger.warning("Failed to send quick ack")
+
+    def is_silence(pcm_chunk: bytes, threshold: int = 500) -> bool:
+        """Check if audio chunk is mostly silence (low RMS energy)."""
+        if len(pcm_chunk) < 2:
+            return True
+        import struct
+        samples = struct.unpack(f'<{len(pcm_chunk)//2}h', pcm_chunk)
+        rms = (sum(s*s for s in samples) / len(samples)) ** 0.5
+        return rms < threshold
 
     try:
         async for raw_message in ws.iter_text():
@@ -109,16 +239,19 @@ async def voice_stream(ws: WebSocket):
                 caller_phone = params.get("from")
                 # Pre-seed conversation with capabilities context
                 context_prompt = (
-                    "A caller just connected. They were told they can say property search, market reports, "
-                    "CMA, or ask anything. They can give an address for a property snapshot or CMA, "
-                    "a city for market stats, or ask to email info to someone by name. Listen carefully "
-                    "and use the right tools: search_listings, search_portal_listings, get_market_report, "
+                    "A caller just connected via phone. Keep ALL responses concise and conversational — "
+                    "this is a VOICE call, not a chat. Use short sentences. Never use markdown, bullets, "
+                    "or lists. Speak naturally like a helpful friend on the phone. "
+                    "Available tools: search_listings, search_portal_listings, get_market_report, "
                     "send_market_report_email, send_email, get_tax_data, get_forecast, cma_quick_lookup, "
-                    "cma_full_report. For property lookups, prefer cma_quick_lookup — it returns a "
-                    "voice_summary field ready for TTS readback. Always offer to email results."
+                    "cma_full_report, make_outbound_call, submit_browser_task. "
+                    "For property lookups, prefer cma_quick_lookup — it has a voice_summary field. "
+                    "Always offer to email details after giving a verbal summary. "
+                    "Keep responses under 3 sentences for voice. If data-heavy, summarize the top "
+                    "2-3 points and offer to email the full report."
                 )
                 conversation_history.append({"role": "user", "content": f"[SYSTEM CONTEXT]: {context_prompt}"})
-                conversation_history.append({"role": "assistant", "content": "Understood, I'm ready to help the caller."})
+                conversation_history.append({"role": "assistant", "content": "Ready to help!"})
                 logger.info(f"Stream started: {stream_sid}")
                 continue
 
@@ -133,14 +266,40 @@ async def voice_stream(ws: WebSocket):
             pcm = decode_twilio_media(raw_message)
             if pcm is None:
                 continue
+
+            # Barge-in: if caller speaks while we're playing audio, clear playback
+            if is_playing and not is_silence(pcm):
+                await send_clear()
+                audio_buffer.clear()
+                silence_frames = 0
+                logger.info("Barge-in detected — cleared playback")
+
             audio_buffer.extend(pcm)
 
-            # Process when we have ~2 seconds of audio (8kHz * 2 bytes * 2s = 32000)
-            if len(audio_buffer) < 32000:
+            # Track silence for end-of-utterance detection
+            if is_silence(pcm):
+                silence_frames += 1
+            else:
+                silence_frames = 0
+
+            # Process when:
+            # 1. We have at least 1.2s of audio AND 0.6s of trailing silence (natural pause), OR
+            # 2. We have 3s of audio (hard cap, don't wait forever)
+            buffer_len = len(audio_buffer)
+            min_audio = 19200    # 1.2s at 8kHz * 2 bytes
+            silence_threshold = 4800  # 0.3s of silence frames (each ~160 bytes)
+            hard_cap = 48000    # 3s hard cap
+
+            has_enough = buffer_len >= min_audio
+            has_pause = silence_frames * 160 >= silence_threshold  # ~160 bytes per frame
+            at_hard_cap = buffer_len >= hard_cap
+
+            if not ((has_enough and has_pause) or at_hard_cap):
                 continue
 
             chunk = bytes(audio_buffer)
             audio_buffer.clear()
+            silence_frames = 0
 
             # 1. Speech-to-text
             transcript = await speech_to_text(chunk)
@@ -148,17 +307,30 @@ async def voice_stream(ws: WebSocket):
                 continue
             logger.info(f"Caller said: {transcript}")
 
-            # 2. Run the AI agent
-            reply, tool_results = await run_agent(transcript, conversation_history)
-            logger.info(f"Agent reply: {reply}")
+            # 2. Quick acknowledgment + thinking music (in parallel)
+            ack_task = asyncio.create_task(send_quick_ack(transcript))
 
-            # 3. Text-to-speech
-            reply_audio = await text_to_speech(reply)
+            # 3. Run the AI agent (concurrent with ack)
+            agent_task = asyncio.create_task(run_agent(transcript, conversation_history))
 
-            # 4. Stream audio back
-            if stream_sid:
-                media_msg = encode_twilio_media(reply_audio, stream_sid)
-                await ws.send_text(media_msg)
+            # Wait for ack to finish first
+            await ack_task
+
+            # Play thinking music while agent works
+            music_task = asyncio.create_task(play_thinking_music())
+
+            # Wait for agent response
+            reply, tool_results = await agent_task
+            logger.info(f"Agent reply: {reply[:100]}...")
+
+            # Clear thinking music
+            await send_clear()
+
+            # 4. Text-to-speech the reply
+            reply_audio = await text_to_speech(reply, profile_id=VOICE_PROFILE)
+
+            # 5. Stream audio back
+            await send_audio(reply_audio)
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
@@ -202,11 +374,11 @@ async def outbound_twiml(request: Request):
 
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Joanna">{greeting}this is CertiHomes AI Assistant calling. {message}</Say>
+    <Say voice="Google.en-US-Journey-F">{greeting}this is CertiHomes AI Assistant calling. {message}</Say>
     <Gather numDigits="1" action="/outbound-action" method="POST">
-        <Say voice="Polly.Joanna">Press 1 to speak with our AI assistant. Press 2 to connect with Krishna. Or you can hang up.</Say>
+        <Say voice="Google.en-US-Journey-F">Press 1 to speak with our AI assistant. Press 2 to connect with Krishna. Or you can hang up.</Say>
     </Gather>
-    <Say voice="Polly.Joanna">Thanks for your time. Goodbye!</Say>
+    <Say voice="Google.en-US-Journey-F">Thanks for your time. Goodbye!</Say>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
@@ -222,7 +394,7 @@ async def outbound_action(request: Request):
         # Connect to the AI voice assistant via WebSocket stream
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Joanna">Connecting you to our AI assistant now. Go ahead and speak after the tone.</Say>
+    <Say voice="Google.en-US-Journey-F">Connecting you to our AI assistant now. Go ahead and speak after the tone.</Say>
     <Connect>
         <Stream url="wss://{host}/voice-stream"/>
     </Connect>
@@ -232,7 +404,7 @@ async def outbound_action(request: Request):
         from tools.outbound_call import KRISHNA_PHONE
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Joanna">Connecting you to Krishna now. Please hold.</Say>
+    <Say voice="Google.en-US-Journey-F">Connecting you to Krishna now. Please hold.</Say>
     <Dial callerId="{get_settings().twilio_phone_number}">
         <Number>{KRISHNA_PHONE}</Number>
     </Dial>
@@ -241,7 +413,7 @@ async def outbound_action(request: Request):
         # Digit 3 or anything else — hang up
         twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Joanna">Thanks for your time. Have a great day! Goodbye.</Say>
+    <Say voice="Google.en-US-Journey-F">Thanks for your time. Have a great day! Goodbye.</Say>
 </Response>"""
 
     return Response(content=twiml, media_type="application/xml")
