@@ -93,16 +93,15 @@ async def incoming_call(request: Request):
     This approach is more reliable than WebSocket streaming and gives
     natural barge-in support.
     """
-    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+    # Use pre-recorded greeting for instant playback (no TTS rendering delay)
+    twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="/voice-respond" method="POST"
             speechTimeout="2" speechModel="experimental_conversations"
             enhanced="true" language="en-US">
-        <Say voice="Google.en-US-Journey-F">
-            Hey there! Welcome to CertiHomes. I can help with property lookups, market reports, C M A's, or really anything on your mind. Just talk to me like a friend. What can I do for you?
-        </Say>
+        <Play>https://aiassistant.certihomes.com/voice/greeting.mp3</Play>
     </Gather>
-    <Say voice="Google.en-US-Journey-F">I didn't catch that. Let me know how I can help!</Say>
+    <Play>https://aiassistant.certihomes.com/voice/ack_didnt_catch.mp3</Play>
     <Redirect>/incoming-call</Redirect>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
@@ -541,15 +540,15 @@ async def outbound_action(request: Request):
     host = request.headers.get("host", "aiassistant.certihomes.com")
 
     if digit == "1":
-        # Start AI conversation via Gather speech loop (same as inbound calls)
+        # Start AI conversation via Gather speech loop with pre-recorded intro
         twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Gather input="speech" action="/voice-respond" method="POST"
             speechTimeout="2" speechModel="experimental_conversations"
             enhanced="true" language="en-US">
-        <Say voice="Google.en-US-Journey-F">Great! I'm all ears. What would you like to know? You can ask me about properties, market stats, or anything else.</Say>
+        <Play>https://aiassistant.certihomes.com/voice/outbound_intro.mp3</Play>
     </Gather>
-    <Say voice="Google.en-US-Journey-F">I didn't catch that. Let me know how I can help!</Say>
+    <Play>https://aiassistant.certihomes.com/voice/ack_didnt_catch.mp3</Play>
     <Redirect>/incoming-call</Redirect>
 </Response>"""
     elif digit == "2":
@@ -557,7 +556,7 @@ async def outbound_action(request: Request):
         from tools.outbound_call import KRISHNA_PHONE
         twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Google.en-US-Journey-F">Connecting you to Krishna now. Please hold.</Say>
+    <Play>https://aiassistant.certihomes.com/voice/outbound_connect.mp3</Play>
     <Dial callerId="{get_settings().twilio_phone_number}">
         <Number>{KRISHNA_PHONE}</Number>
     </Dial>
@@ -566,7 +565,7 @@ async def outbound_action(request: Request):
         # Digit 3 or anything else — hang up
         twiml = """<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Google.en-US-Journey-F">Thanks for your time. Have a great day! Goodbye.</Say>
+    <Play>https://aiassistant.certihomes.com/voice/outbound_goodbye.mp3</Play>
 </Response>"""
 
     return Response(content=twiml, media_type="application/xml")
