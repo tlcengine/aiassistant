@@ -26,8 +26,14 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
 
-    # VoiceBox
-    voicebox_url: str = "http://localhost:8004"
+    # Email (Google Workspace SMTP for claude@certihomes.com)
+    smtp_app_password: str = ""
+
+    # TLCengine V3 API (CJMLS property portal backend)
+    tlcengine_api_url: str = "https://api.tlcengine.com/V3/api/km"
+
+    # VoiceBox (local on geo2)
+    voicebox_url: str = "http://127.0.0.1:17493"
 
     # Server
     host: str = "0.0.0.0"

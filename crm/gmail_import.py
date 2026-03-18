@@ -2,10 +2,14 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
+
+# Allow scope changes (Google often adds openid/profile)
+os.environ["OAUTHLIB_RELAX_TOKEN_SCOPE"] = "1"
 from googleapiclient.discovery import build
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select

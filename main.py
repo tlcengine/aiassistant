@@ -59,12 +59,18 @@ async def health():
 
 @app.post("/incoming-call")
 async def incoming_call(request: Request):
-    """Twilio webhook — answers the call and opens a WebSocket media stream."""
-    settings = get_settings()
-    host = request.headers.get("host", "aiassistant.tlcengine.com")
+    """Twilio webhook — answers the call and connects to AI assistant directly."""
+    host = request.headers.get("host", "aiassistant.certihomes.com")
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Joanna">Welcome to CertiHomes. How can I help you today?</Say>
+    <Say voice="Polly.Joanna">
+        Welcome to CertiHomes! What would you like to do?
+        You can say property search, market reports, or just ask me anything.
+        For example, you can give me an address to check availability,
+        a city name for market stats, or ask me to email information to someone.
+        Please note, we currently only cover Central Jersey.
+        Go ahead, I'm listening!
+    </Say>
     <Connect>
         <Stream url="wss://{host}/voice-stream"/>
     </Connect>
@@ -90,7 +96,18 @@ async def voice_stream(ws: WebSocket):
 
             if event == "start":
                 stream_sid = data["start"]["streamSid"]
-                caller_phone = data["start"].get("customParameters", {}).get("from")
+                params = data["start"].get("customParameters", {})
+                caller_phone = params.get("from")
+                # Pre-seed conversation with capabilities context
+                context_prompt = (
+                    "A caller just connected. They were told they can say property search, market reports, "
+                    "or ask anything. They can give an address to check availability, a city for market stats, "
+                    "or ask to email info to someone by name. Listen carefully and use the right tools: "
+                    "search_listings, search_portal_listings, get_market_report, send_market_report_email, "
+                    "send_email, get_tax_data, get_forecast. Always offer to email results."
+                )
+                conversation_history.append({"role": "user", "content": f"[SYSTEM CONTEXT]: {context_prompt}"})
+                conversation_history.append({"role": "assistant", "content": "Understood, I'm ready to help the caller."})
                 logger.info(f"Stream started: {stream_sid}")
                 continue
 
@@ -156,6 +173,13 @@ async def call_status(request: Request):
         except Exception:
             logger.exception("Failed to send follow-up SMS")
     return Response(content="<Response/>", media_type="application/xml")
+
+
+# Named page routes (before static mount)
+@app.get("/crm")
+async def crm_page():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/crm.html")
 
 
 # Serve static frontend (must be last — catches all unmatched routes)

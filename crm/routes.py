@@ -171,19 +171,13 @@ async def list_deals(
     limit: int = Query(50, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Deal)
+    stmt = select(Deal).options(selectinload(Deal.contact))
     if status:
         stmt = stmt.where(Deal.status == status)
     stmt = stmt.order_by(Deal.updated_at.desc()).limit(limit)
     result = await db.execute(stmt)
     deals = result.scalars().all()
-    return [
-        {"id": d.id, "contact_id": d.contact_id, "title": d.title, "value": d.value,
-         "status": d.status.value, "mls_id": d.mls_id, "property_address": d.property_address,
-         "expected_close_date": d.expected_close_date.isoformat() if d.expected_close_date else None,
-         "created_at": d.created_at.isoformat()}
-        for d in deals
-    ]
+    return [_deal_to_dict(d) for d in deals]
 
 
 @router.post("/deals")
@@ -192,7 +186,101 @@ async def create_deal(data: DealCreate, db: AsyncSession = Depends(get_db)):
     db.add(deal)
     await db.commit()
     await db.refresh(deal)
-    return {"id": deal.id, "title": deal.title, "status": deal.status.value}
+    return _deal_to_dict(deal)
+
+
+class DealUpdate(BaseModel):
+    title: str | None = None
+    value: float | None = None
+    status: LeadStatus | None = None
+    property_address: str | None = None
+    mls_id: str | None = None
+    notes: str | None = None
+    expected_close_date: date | None = None
+
+
+@router.get("/deals/{deal_id}")
+async def get_deal(deal_id: int, db: AsyncSession = Depends(get_db)):
+    deal = await db.get(Deal, deal_id)
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    return _deal_to_dict(deal)
+
+
+@router.patch("/deals/{deal_id}")
+async def update_deal(deal_id: int, data: DealUpdate, db: AsyncSession = Depends(get_db)):
+    deal = await db.get(Deal, deal_id)
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    for k, v in data.model_dump(exclude_none=True).items():
+        setattr(deal, k, v)
+    await db.commit()
+    await db.refresh(deal)
+    return _deal_to_dict(deal)
+
+
+@router.delete("/deals/{deal_id}")
+async def delete_deal(deal_id: int, db: AsyncSession = Depends(get_db)):
+    deal = await db.get(Deal, deal_id)
+    if not deal:
+        raise HTTPException(404, "Deal not found")
+    await db.delete(deal)
+    await db.commit()
+    return {"deleted": True}
+
+
+@router.get("/pipeline")
+async def pipeline_view(db: AsyncSession = Depends(get_db)):
+    """Get all deals grouped by stage for Kanban view."""
+    stmt = (
+        select(Deal)
+        .options(selectinload(Deal.contact))
+        .where(Deal.status != LeadStatus.LOST)
+        .order_by(Deal.updated_at.desc())
+    )
+    result = await db.execute(stmt)
+    deals = result.scalars().all()
+
+    pipeline = {}
+    for s in LeadStatus:
+        if s != LeadStatus.LOST:
+            pipeline[s.value] = []
+
+    for d in deals:
+        stage = d.status.value
+        if stage in pipeline:
+            pipeline[stage].append(_deal_to_dict(d))
+
+    # Stats
+    total_value = sum(d.value or 0 for d in deals)
+    return {
+        "stages": pipeline,
+        "total_deals": len(deals),
+        "total_value": total_value,
+    }
+
+
+def _deal_to_dict(d: Deal) -> dict:
+    contact_name = ""
+    contact_email = ""
+    if hasattr(d, "contact") and d.contact:
+        contact_name = f"{d.contact.first_name or ''} {d.contact.last_name or ''}".strip()
+        contact_email = d.contact.email or ""
+    return {
+        "id": d.id,
+        "contact_id": d.contact_id,
+        "contact_name": contact_name,
+        "contact_email": contact_email,
+        "title": d.title,
+        "value": d.value,
+        "status": d.status.value,
+        "property_address": d.property_address,
+        "mls_id": d.mls_id,
+        "notes": d.notes,
+        "expected_close_date": d.expected_close_date.isoformat() if d.expected_close_date else None,
+        "created_at": d.created_at.isoformat(),
+        "updated_at": d.updated_at.isoformat(),
+    }
 
 
 # --- Activity endpoints ---
