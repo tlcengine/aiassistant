@@ -12,6 +12,7 @@ import uvicorn
 from agent import run_agent
 from config import get_settings
 from tools.sms import send_sms
+from tools.outbound_call import pending_calls
 from voice.twilio_audio import decode_twilio_media, encode_twilio_media
 from voice.voicebox_client import speech_to_text, text_to_speech
 
@@ -183,6 +184,67 @@ async def call_status(request: Request):
         except Exception:
             logger.exception("Failed to send follow-up SMS")
     return Response(content="<Response/>", media_type="application/xml")
+
+
+@app.post("/outbound-twiml")
+async def outbound_twiml(request: Request):
+    """Twilio webhook — called when an outbound call is answered.
+
+    Delivers the TTS message then offers DTMF options.
+    """
+    form = await request.form()
+    call_sid = form.get("CallSid", "")
+    call_info = pending_calls.pop(call_sid, {})
+    contact_name = call_info.get("contact_name", "")
+    message = call_info.get("message", "You have a message from CertiHomes.")
+
+    greeting = f"Hi {contact_name}, " if contact_name else "Hi, "
+
+    twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna">{greeting}this is CertiHomes AI Assistant calling. {message}</Say>
+    <Gather numDigits="1" action="/outbound-action" method="POST">
+        <Say voice="Polly.Joanna">Press 1 to speak with our AI assistant. Press 2 to connect with Krishna. Or you can hang up.</Say>
+    </Gather>
+    <Say voice="Polly.Joanna">Thanks for your time. Goodbye!</Say>
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
+
+
+@app.post("/outbound-action")
+async def outbound_action(request: Request):
+    """Handle DTMF input from the outbound call recipient."""
+    form = await request.form()
+    digit = form.get("Digits", "")
+    host = request.headers.get("host", "aiassistant.certihomes.com")
+
+    if digit == "1":
+        # Connect to the AI voice assistant via WebSocket stream
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna">Connecting you to our AI assistant now. Go ahead and speak after the tone.</Say>
+    <Connect>
+        <Stream url="wss://{host}/voice-stream"/>
+    </Connect>
+</Response>"""
+    elif digit == "2":
+        # Transfer to Krishna's phone
+        from tools.outbound_call import KRISHNA_PHONE
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna">Connecting you to Krishna now. Please hold.</Say>
+    <Dial callerId="{get_settings().twilio_phone_number}">
+        <Number>{KRISHNA_PHONE}</Number>
+    </Dial>
+</Response>"""
+    else:
+        # Digit 3 or anything else — hang up
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna">Thanks for your time. Have a great day! Goodbye.</Say>
+</Response>"""
+
+    return Response(content=twiml, media_type="application/xml")
 
 
 # Named page routes (before static mount)

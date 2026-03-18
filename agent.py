@@ -9,6 +9,7 @@ from tools import mls, close_crm, sms
 from tools.email_sender import send_email
 from tools.market_report_email import send_market_report_email
 from tools.crm_tools import lookup_contact_by_email, create_crm_contact
+from tools.outbound_call import make_outbound_call
 
 # Tool definitions for Claude
 TOOLS = [
@@ -286,6 +287,19 @@ TOOLS = [
             "required": ["address"],
         },
     },
+    {
+        "name": "make_outbound_call",
+        "description": "Make an outbound phone call to a contact. Delivers a message via TTS, then offers the recipient options: speak with AI assistant, connect with Krishna, or hang up. If only a contact_name is provided (no phone), the CRM is searched for their number.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "phone": {"type": "string", "description": "Phone number in +1XXXXXXXXXX format (optional if contact_name given)"},
+                "message": {"type": "string", "description": "The message to deliver to the recipient via TTS"},
+                "contact_name": {"type": "string", "description": "Contact name to look up in CRM if phone not provided"},
+            },
+            "required": ["message"],
+        },
+    },
 ]
 
 
@@ -469,6 +483,7 @@ TOOL_HANDLERS = {
     "cma_quick_lookup": _cma_quick_lookup,
     "cma_full_report": _cma_full_report,
     "start_browser_task": _start_browser_task,
+    "make_outbound_call": make_outbound_call,
 }
 
 
