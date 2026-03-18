@@ -65,10 +65,10 @@ async def incoming_call(request: Request):
 <Response>
     <Say voice="Polly.Joanna">
         Welcome to CertiHomes! What would you like to do?
-        You can say property search, market reports, or just ask me anything.
-        For example, you can give me an address to check availability,
+        You can say property search, market reports, C M A, or just ask me anything.
+        For example, you can give me an address for a property snapshot or C M A,
         a city name for market stats, or ask me to email information to someone.
-        Please note, we currently only cover Central Jersey.
+        Please note, we currently only cover Central Jersey and metro Atlanta.
         Go ahead, I'm listening!
     </Say>
     <Connect>
@@ -101,10 +101,12 @@ async def voice_stream(ws: WebSocket):
                 # Pre-seed conversation with capabilities context
                 context_prompt = (
                     "A caller just connected. They were told they can say property search, market reports, "
-                    "or ask anything. They can give an address to check availability, a city for market stats, "
-                    "or ask to email info to someone by name. Listen carefully and use the right tools: "
-                    "search_listings, search_portal_listings, get_market_report, send_market_report_email, "
-                    "send_email, get_tax_data, get_forecast. Always offer to email results."
+                    "CMA, or ask anything. They can give an address for a property snapshot or CMA, "
+                    "a city for market stats, or ask to email info to someone by name. Listen carefully "
+                    "and use the right tools: search_listings, search_portal_listings, get_market_report, "
+                    "send_market_report_email, send_email, get_tax_data, get_forecast, cma_quick_lookup, "
+                    "cma_full_report. For property lookups, prefer cma_quick_lookup — it returns a "
+                    "voice_summary field ready for TTS readback. Always offer to email results."
                 )
                 conversation_history.append({"role": "user", "content": f"[SYSTEM CONTEXT]: {context_prompt}"})
                 conversation_history.append({"role": "assistant", "content": "Understood, I'm ready to help the caller."})

@@ -242,6 +242,38 @@ TOOLS = [
             "required": ["lead_id", "due_date"],
         },
     },
+    {
+        "name": "cma_quick_lookup",
+        "description": "Quick property lookup — returns tax data, MLS listing, nearby sold comps, demographics, flood risk, and a voice-ready summary. Use for phone call property lookups or quick address checks. Returns a voice_summary field ready for TTS.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "address": {"type": "string", "description": "Street address (e.g., 100 River Rd)"},
+                "city": {"type": "string", "description": "City name (e.g., Piscataway)"},
+                "state": {"type": "string", "description": "2-letter state code", "default": "NJ"},
+            },
+            "required": ["address"],
+        },
+    },
+    {
+        "name": "cma_full_report",
+        "description": "Generate a full Comparative Market Analysis (CMA) report for a property. Creates a permanent report with comp selection, adjustments, pricing recommendation, AI narratives, and seller net sheet. Use when caller wants a detailed CMA emailed to them. Takes 10-30 seconds.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "address": {"type": "string", "description": "Street address"},
+                "city": {"type": "string", "description": "City name"},
+                "state": {"type": "string", "description": "2-letter state code", "default": "NJ"},
+                "cma_type": {"type": "string", "enum": ["seller", "buyer"], "default": "seller", "description": "Type of CMA — seller (pricing/net sheet) or buyer (offer strategy)"},
+                "client_name": {"type": "string", "description": "Client's name for the report"},
+                "client_email": {"type": "string", "description": "Client's email to send report to"},
+                "mortgage_payoff": {"type": "number", "description": "Remaining mortgage balance (seller CMA only)", "default": 0},
+                "agent_commission_pct": {"type": "number", "description": "Commission percentage", "default": 5.0},
+                "generate_narrative": {"type": "boolean", "description": "Generate AI narrative sections (slower but richer)", "default": False},
+            },
+            "required": ["address"],
+        },
+    },
 ]
 
 
@@ -327,6 +359,65 @@ async def _search_portal_listings(query: str) -> dict:
         return {"query": query, "results": [], "error": str(e), "fallback": "Use search_listings tool instead"}
 
 
+async def _cma_quick_lookup(address: str, city: str = "", state: str = "NJ") -> dict:
+    """Quick property lookup via CMA API."""
+    import httpx
+    try:
+        payload = {"address": address, "state": state}
+        if city:
+            payload["city"] = city
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://cmaapi.certihomes.com/api/v1/cma/quick",
+                json=payload,
+            )
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+async def _cma_full_report(
+    address: str,
+    city: str = "",
+    state: str = "NJ",
+    cma_type: str = "seller",
+    client_name: str = "",
+    client_email: str = "",
+    mortgage_payoff: float = 0,
+    agent_commission_pct: float = 5.0,
+    generate_narrative: bool = False,
+) -> dict:
+    """Generate a full CMA report via CMA API."""
+    import httpx
+    try:
+        payload = {
+            "address": address,
+            "state": state,
+            "cma_type": cma_type,
+            "client_name": client_name,
+            "client_email": client_email,
+            "mortgage_payoff": mortgage_payoff,
+            "agent_commission_pct": agent_commission_pct,
+            "generate_narrative": generate_narrative,
+        }
+        if city:
+            payload["city"] = city
+        async with httpx.AsyncClient(timeout=90) as client:
+            resp = await client.post(
+                "https://cmaapi.certihomes.com/api/v1/cma/auto-create",
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            # Add report URL if we got a report_uid
+            if "report_uid" in data:
+                data["report_url"] = f"https://cma.certihomes.com/cma/{data['report_uid']}"
+            return data
+    except Exception as e:
+        return {"error": str(e)}
+
+
 # Map tool names to handler functions
 TOOL_HANDLERS = {
     "search_listings": mls.search_listings,
@@ -346,6 +437,8 @@ TOOL_HANDLERS = {
     "create_crm_contact": create_crm_contact,
     "create_lead": close_crm.create_lead,
     "schedule_callback": close_crm.schedule_callback,
+    "cma_quick_lookup": _cma_quick_lookup,
+    "cma_full_report": _cma_full_report,
 }
 
 
