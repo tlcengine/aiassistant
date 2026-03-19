@@ -359,7 +359,7 @@
   // Create bubble
   const bubble = document.createElement('button');
   bubble.className = 'ch-bubble';
-  bubble.setAttribute('aria-label', 'Open BHS AI Assistant');
+  bubble.setAttribute('aria-label', 'Open CertiHomes AI Assistant');
   bubble.innerHTML = '<span class="ch-bubble-c">C</span><span class="ch-bubble-ai">AI</span>';
   shadow.appendChild(bubble);
 
@@ -373,7 +373,7 @@
       <button class="ch-close-btn" aria-label="Close chat">&times;</button>
     </div>
     <div class="ch-messages" id="chMessages">
-      <div class="ch-msg ch-msg-ai">Hi! I'm the BHS AI assistant. How can I help you today?</div>
+      <div class="ch-msg ch-msg-ai">Hi! I'm the CertiHomes AI assistant. How can I help you today?</div>
     </div>
     <div class="ch-voice-status" id="chVoiceStatus"></div>
     <div class="ch-input-area">
@@ -381,7 +381,7 @@
       <input class="ch-input" type="text" placeholder="Type or hold 🎙 to talk..." autocomplete="off"/>
       <button class="ch-send-btn">Send</button>
     </div>
-    <div class="ch-powered"><a href="https://certihomes.com" target="_blank" rel="noopener">Powered by BHS</a></div>
+    <div class="ch-powered"><a href="https://certihomes.com" target="_blank" rel="noopener">Powered by CertiHomes</a></div>
   `;
   shadow.appendChild(panel);
 
@@ -625,7 +625,7 @@
     } catch (err) {
       hideTyping();
       addMessage('Sorry, something went wrong. Please try again.', 'ai');
-      console.error('[BHS Widget]', err);
+      console.error('[CertiHomes Widget]', err);
     } finally {
       isSending = false;
       sendBtn.disabled = false;
