@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CertiHomes AI Assistant</title>
+    <title>BHS AI Assistant</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -242,7 +242,7 @@
 <body>
     <header>
         <div>
-            <h1>CertiHomes AI Assistant</h1>
+            <h1>BHS AI Assistant</h1>
             <div class="subtitle">Listings & Market Stats -- powered by Claude</div>
         </div>
     </header>
@@ -251,7 +251,7 @@
         <div class="chat-panel">
             <div class="chat-messages" id="chatMessages">
                 <div class="message assistant">
-                    Hi! I'm the CertiHomes AI assistant. I can help you find listings,
+                    Hi! I'm the BHS AI assistant. I can help you find listings,
                     get market stats, or answer questions about real estate in the
                     NYC to Northern Virginia corridor. What are you looking for?
                 </div>
@@ -266,30 +266,16 @@
         <div class="side-panel">
             <div class="card">
                 <h3>Quick Questions</h3>
-                <button class="quick-btn" onclick="askQuick(this.textContent)">What's the median home price in 10001?</button>
-                <button class="quick-btn" onclick="askQuick(this.textContent)">Show me 3-bed homes under $500k in NJ</button>
-                <button class="quick-btn" onclick="askQuick(this.textContent)">How's the market in Arlington, VA?</button>
-                <button class="quick-btn" onclick="askQuick(this.textContent)">What's available in Brooklyn under $1M?</button>
-            </div>
-
-            <div class="card">
-                <h3>Service Status</h3>
-                <div class="stat-row">
-                    <span class="stat-label"><span class="status-dot green" id="apiStatus"></span>AI Agent</span>
-                    <span class="stat-value" id="apiStatusText">Online</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label"><span class="status-dot green" id="mlsStatus"></span>MLS Data</span>
-                    <span class="stat-value" id="mlsStatusText">Connected</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label"><span class="status-dot green" id="voiceStatus"></span>Voice Line</span>
-                    <span class="stat-value" id="voiceStatusText">Ready</span>
+                <div id="quickQuestions">
+                    <button class="quick-btn" onclick="askQuick(this.textContent)">What's the median home price in this area?</button>
+                    <button class="quick-btn" onclick="askQuick(this.textContent)">Tell me about this neighborhood — schools, safety, walkability</button>
+                    <button class="quick-btn" onclick="askQuick(this.textContent)">Run a CMA for a buyer on this property</button>
+                    <button class="quick-btn" onclick="askQuick(this.textContent)">What comparable homes sold nearby in the last 6 months?</button>
                 </div>
             </div>
 
             <div class="card">
-                <h3>Call Us</h3>
+                <h3>Talk to Us</h3>
                 <p style="font-size: 1.25rem; font-weight: 700; color: #38bdf8; margin-bottom: 0.5rem;" id="phoneNumber">
                     <a href="tel:+19084305187" style="color: #38bdf8; text-decoration: none;">(908) 430-5187</a>
                 </p>
@@ -307,6 +293,33 @@
         const sendBtn = document.getElementById('sendBtn');
 
         let conversationId = crypto.randomUUID();
+        let propertyContext = null;
+
+        // Listen for property data from the Chrome extension via postMessage
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'wealthwise-property') {
+                propertyContext = event.data;
+                const addr = event.data.address || 'this property';
+                const city = event.data.city || '';
+                const state = event.data.state || '';
+                const zip = event.data.zip || '';
+                const location = [city, state, zip].filter(Boolean).join(', ');
+                const fullAddr = addr + (location ? ', ' + location : '');
+                const price = event.data.price ? `$${Number(event.data.price).toLocaleString()}` : '';
+                const priceLabel = price ? ` (listed at ${price})` : '';
+
+                // Update quick questions with property context
+                const qq = document.getElementById('quickQuestions');
+                if (qq) {
+                    qq.innerHTML = `
+                        <button class="quick-btn" onclick="askQuick(this.textContent)">What's the median home price near ${fullAddr}?</button>
+                        <button class="quick-btn" onclick="askQuick(this.textContent)">Tell me about the neighborhood around ${addr} — schools, safety, walkability</button>
+                        <button class="quick-btn" onclick="askQuick(this.textContent)">Run a buyer CMA for ${fullAddr}${priceLabel}</button>
+                        <button class="quick-btn" onclick="askQuick(this.textContent)">What comparable homes sold near ${addr} in the last 6 months?</button>
+                    `;
+                }
+            }
+        });
 
         chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
