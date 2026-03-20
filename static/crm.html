@@ -118,6 +118,7 @@
         .btn-outline:hover { border-color: #3b82f6; }
         .btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
         .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
 
         /* Modal */
         .modal-overlay {
@@ -140,7 +141,7 @@
             border-radius: 8px; padding: 0.625rem; color: #e2e8f0;
             font-size: 0.875rem; outline: none;
         }
-        .form-group input:focus, .form-group select:focus { border-color: #3b82f6; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #3b82f6; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.5rem; }
 
@@ -150,26 +151,10 @@
             color: white; padding: 0.75rem 1.5rem; border-radius: 8px;
             font-weight: 600; z-index: 200; display: none;
         }
+        .toast.error { background: #dc2626; }
         .toast.show { display: block; }
 
-        /* Pipeline view */
-        .pipeline { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
-        .pipeline-col {
-            min-width: 240px; background: #1e293b; border: 1px solid #334155;
-            border-radius: 10px; padding: 1rem;
-        }
-        .pipeline-col h4 {
-            font-size: 0.8125rem; color: #94a3b8; text-transform: uppercase;
-            margin-bottom: 0.75rem;
-        }
-        .pipeline-card {
-            background: #0f172a; border: 1px solid #334155; border-radius: 8px;
-            padding: 0.75rem; margin-bottom: 0.5rem; cursor: pointer;
-        }
-        .pipeline-card:hover { border-color: #3b82f6; }
-        .pipeline-card .name { font-weight: 600; font-size: 0.875rem; }
-        .pipeline-card .detail { font-size: 0.75rem; color: #64748b; margin-top: 0.25rem; }
-
+        /* Tabs */
         .tab-bar { display: flex; gap: 0; margin-bottom: 1.5rem; }
         .tab {
             padding: 0.625rem 1.25rem; background: transparent; border: 1px solid #334155;
@@ -179,10 +164,118 @@
         .tab:last-child { border-radius: 0 8px 8px 0; }
         .tab.active { background: #3b82f6; color: white; border-color: #3b82f6; }
 
+        /* ======= Kanban Pipeline ======= */
+        .kanban {
+            display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 1rem;
+            height: calc(100vh - 250px); min-height: 400px;
+        }
+        .kanban-col {
+            min-width: 260px; width: 260px; flex-shrink: 0;
+            background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+            display: flex; flex-direction: column; max-height: 100%;
+        }
+        .kanban-col-header {
+            padding: 0.75rem 1rem; border-bottom: 1px solid #334155;
+            display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .kanban-col-header .col-title {
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .kanban-col-header .col-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+        }
+        .kanban-col-header h4 {
+            font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.04em;
+            color: #e2e8f0; font-weight: 600;
+        }
+        .kanban-col-header .col-count {
+            font-size: 0.75rem; color: #64748b; background: #334155;
+            padding: 1px 7px; border-radius: 10px; margin-left: 0.375rem;
+        }
+        .kanban-col-header .col-value {
+            font-size: 0.6875rem; color: #64748b; display: block; margin-top: 2px;
+        }
+        .kanban-col-header .col-add {
+            background: none; border: 1px solid #475569; color: #94a3b8;
+            width: 26px; height: 26px; border-radius: 6px; cursor: pointer;
+            font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+            line-height: 1; transition: all 0.15s;
+        }
+        .kanban-col-header .col-add:hover {
+            background: #334155; color: #e2e8f0; border-color: #3b82f6;
+        }
+        .kanban-col-body {
+            flex: 1; overflow-y: auto; padding: 0.5rem; min-height: 60px;
+        }
+        .kanban-col-body.drag-over {
+            background: rgba(59, 130, 246, 0.08);
+            outline: 2px dashed #3b82f6; outline-offset: -4px;
+            border-radius: 0 0 10px 10px;
+        }
+
+        /* Deal card */
+        .deal-card {
+            background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+            padding: 0.75rem; margin-bottom: 0.5rem; cursor: grab;
+            transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s, transform 0.15s;
+            position: relative;
+        }
+        .deal-card:hover { border-color: #475569; }
+        .deal-card:active { cursor: grabbing; }
+        .deal-card.dragging {
+            opacity: 0.4; transform: scale(0.97);
+        }
+        .deal-card .card-top {
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .deal-card .card-title {
+            font-weight: 600; font-size: 0.875rem; color: #e2e8f0;
+            line-height: 1.3; flex: 1; margin-right: 0.5rem;
+        }
+        .deal-card .card-actions {
+            display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s;
+        }
+        .deal-card:hover .card-actions { opacity: 1; }
+        .deal-card .card-actions button {
+            background: none; border: none; color: #64748b; cursor: pointer;
+            padding: 2px 4px; border-radius: 4px; font-size: 0.8125rem;
+        }
+        .deal-card .card-actions button:hover { color: #e2e8f0; background: #334155; }
+        .deal-card .card-actions button.delete-btn:hover { color: #f87171; background: #3b1111; }
+        .deal-card .card-contact {
+            font-size: 0.75rem; color: #94a3b8; margin-top: 0.375rem;
+            display: flex; align-items: center; gap: 0.375rem;
+        }
+        .deal-card .card-contact .contact-avatar {
+            width: 18px; height: 18px; border-radius: 50%; background: #334155;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 0.5625rem; font-weight: 600; color: #94a3b8; flex-shrink: 0;
+        }
+        .deal-card .card-value {
+            font-size: 0.8125rem; font-weight: 700; color: #22c55e; margin-top: 0.5rem;
+        }
+        .deal-card .card-meta {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 0.5rem; font-size: 0.6875rem; color: #64748b;
+        }
+        .deal-card .card-address {
+            font-size: 0.6875rem; color: #64748b; margin-top: 0.375rem;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Deal modal (edit/view) */
+        .deal-modal-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+        }
+        .deal-modal-full { grid-column: 1 / -1; }
+
         @media (max-width: 768px) {
             .layout { flex-direction: column; }
             .sidebar { width: 100%; max-height: 200px; overflow-y: auto; }
             .stats { grid-template-columns: repeat(2, 1fr); }
+            .kanban { height: auto; min-height: 300px; }
+            .kanban-col { min-width: 220px; width: 220px; }
         }
     </style>
 </head>
@@ -280,9 +373,9 @@
                 </table>
             </div>
 
-            <!-- Pipeline view (hidden by default) -->
+            <!-- Pipeline Kanban view -->
             <div id="pipelineView" style="display:none;">
-                <div class="pipeline" id="pipelineContainer"></div>
+                <div class="kanban" id="kanbanBoard"></div>
             </div>
         </main>
     </div>
@@ -365,6 +458,58 @@
         </div>
     </div>
 
+    <!-- Deal Modal (Create / Edit) -->
+    <div class="modal-overlay" id="dealModal">
+        <div class="modal">
+            <h2 id="dealModalTitle">New Deal</h2>
+            <input type="hidden" id="editDealId"/>
+            <input type="hidden" id="dealStage"/>
+            <div class="form-group">
+                <label>Title *</label>
+                <input type="text" id="dealTitle" placeholder="e.g. 123 Main St Purchase"/>
+            </div>
+            <div class="form-group">
+                <label>Contact *</label>
+                <select id="dealContact">
+                    <option value="">-- Select contact --</option>
+                </select>
+            </div>
+            <div class="deal-modal-grid">
+                <div class="form-group">
+                    <label>Value ($)</label>
+                    <input type="number" id="dealValue" placeholder="500000"/>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="dealStatus">
+                        <option value="new">New</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="qualified">Qualified</option>
+                        <option value="proposal">Proposal</option>
+                        <option value="negotiation">Negotiation</option>
+                        <option value="won">Won</option>
+                        <option value="lost">Lost</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Property Address</label>
+                <input type="text" id="dealAddress" placeholder="123 Main St, Edison, NJ 08817"/>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="dealNotes" rows="3" style="resize:vertical;" placeholder="Deal notes..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <span id="dealDeleteWrap" style="margin-right:auto; display:none;">
+                    <button class="btn btn-danger btn-sm" onclick="deleteDeal()">Delete Deal</button>
+                </span>
+                <button class="btn btn-outline" onclick="closeDealModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveDeal()">Save Deal</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast"></div>
 
     <script>
@@ -373,6 +518,22 @@
         let currentSource = '';
         let searchQuery = '';
         let searchTimeout;
+        let allContacts = []; // cached for deal contact dropdown
+
+        // Stage config
+        const STAGES = [
+            { key: 'new',         label: 'New',         color: '#3b82f6' },
+            { key: 'contacted',   label: 'Contacted',   color: '#06b6d4' },
+            { key: 'qualified',   label: 'Qualified',   color: '#eab308' },
+            { key: 'proposal',    label: 'Proposal',    color: '#f97316' },
+            { key: 'negotiation', label: 'Negotiation', color: '#a855f7' },
+            { key: 'won',         label: 'Won',         color: '#22c55e' },
+            { key: 'lost',        label: 'Lost',        color: '#6b7280' },
+        ];
+
+        // Drag state
+        let dragDealId = null;
+        let dragSourceStage = null;
 
         // Load on page ready
         document.addEventListener('DOMContentLoaded', () => {
@@ -383,6 +544,7 @@
             if (params.get('toast')) showToast(params.get('toast'));
         });
 
+        // ---- Stats ----
         async function loadStats() {
             const r = await fetch(`${API}/stats`);
             const d = await r.json();
@@ -402,6 +564,7 @@
             document.getElementById('countLost').textContent = d.by_status.lost || 0;
         }
 
+        // ---- Contacts ----
         async function loadContacts() {
             let url = `${API}/contacts?limit=100`;
             if (searchQuery) url += `&q=${encodeURIComponent(searchQuery)}`;
@@ -410,8 +573,8 @@
 
             const r = await fetch(url);
             const d = await r.json();
+            allContacts = d.contacts;
             renderTable(d.contacts);
-            renderPipeline(d.contacts);
         }
 
         function renderTable(contacts) {
@@ -431,25 +594,257 @@
             `).join('');
         }
 
-        function renderPipeline(contacts) {
-            const stages = ['new','contacted','qualified','proposal','negotiation','won'];
-            const container = document.getElementById('pipelineContainer');
-            container.innerHTML = stages.map(stage => {
-                const stageContacts = contacts.filter(c => c.status === stage);
-                return `
-                    <div class="pipeline-col">
-                        <h4>${stage} (${stageContacts.length})</h4>
-                        ${stageContacts.map(c => `
-                            <div class="pipeline-card" onclick="editContact(${c.id})">
-                                <div class="name">${c.full_name}</div>
-                                <div class="detail">${c.interest || c.email || c.phone || ''}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            }).join('');
+        // ---- Kanban Pipeline ----
+        async function loadPipeline() {
+            try {
+                const r = await fetch(`${API}/pipeline`);
+                const d = await r.json();
+                renderKanban(d.stages);
+            } catch (e) {
+                console.error('Failed to load pipeline:', e);
+            }
         }
 
+        function renderKanban(stages) {
+            const board = document.getElementById('kanbanBoard');
+            board.innerHTML = '';
+
+            STAGES.forEach(stage => {
+                const deals = stages[stage.key] || [];
+                const totalValue = deals.reduce((s, d) => s + (d.value || 0), 0);
+
+                const col = document.createElement('div');
+                col.className = 'kanban-col';
+                col.dataset.stage = stage.key;
+
+                col.innerHTML = `
+                    <div class="kanban-col-header">
+                        <div>
+                            <div class="col-title">
+                                <span class="col-dot" style="background:${stage.color}"></span>
+                                <h4>${stage.label}</h4>
+                                <span class="col-count">${deals.length}</span>
+                            </div>
+                            <span class="col-value">${totalValue > 0 ? '$' + totalValue.toLocaleString() : ''}</span>
+                        </div>
+                        <button class="col-add" onclick="showAddDeal('${stage.key}')" title="Add deal">+</button>
+                    </div>
+                    <div class="kanban-col-body" data-stage="${stage.key}"></div>
+                `;
+
+                const body = col.querySelector('.kanban-col-body');
+
+                // Drop zone events
+                body.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    body.classList.add('drag-over');
+                });
+                body.addEventListener('dragleave', e => {
+                    if (!body.contains(e.relatedTarget)) {
+                        body.classList.remove('drag-over');
+                    }
+                });
+                body.addEventListener('drop', e => {
+                    e.preventDefault();
+                    body.classList.remove('drag-over');
+                    const dealId = e.dataTransfer.getData('text/plain');
+                    const newStage = body.dataset.stage;
+                    if (dealId && newStage !== dragSourceStage) {
+                        moveDeal(parseInt(dealId), newStage);
+                    }
+                });
+
+                // Render deal cards
+                deals.forEach(deal => {
+                    body.appendChild(createDealCard(deal));
+                });
+
+                board.appendChild(col);
+            });
+        }
+
+        function createDealCard(deal) {
+            const card = document.createElement('div');
+            card.className = 'deal-card';
+            card.draggable = true;
+            card.dataset.dealId = deal.id;
+
+            const daysAgo = Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000);
+            const daysLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? '1 day ago' : `${daysAgo}d ago`;
+            const initials = deal.contact_name ? deal.contact_name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '?';
+
+            card.innerHTML = `
+                <div class="card-top">
+                    <div class="card-title">${escHtml(deal.title)}</div>
+                    <div class="card-actions">
+                        <button onclick="event.stopPropagation(); showEditDeal(${deal.id})" title="Edit">&#9998;</button>
+                        <button class="delete-btn" onclick="event.stopPropagation(); confirmDeleteDeal(${deal.id}, '${escAttr(deal.title)}')" title="Delete">&#128465;</button>
+                    </div>
+                </div>
+                <div class="card-contact">
+                    <span class="contact-avatar">${initials}</span>
+                    ${escHtml(deal.contact_name || 'No contact')}
+                </div>
+                ${deal.value ? `<div class="card-value">$${deal.value.toLocaleString()}</div>` : ''}
+                ${deal.property_address ? `<div class="card-address">${escHtml(deal.property_address)}</div>` : ''}
+                <div class="card-meta">
+                    <span>${daysLabel}</span>
+                    ${deal.mls_id ? `<span>MLS# ${escHtml(deal.mls_id)}</span>` : ''}
+                </div>
+            `;
+
+            // Drag events
+            card.addEventListener('dragstart', e => {
+                dragDealId = deal.id;
+                dragSourceStage = deal.status;
+                e.dataTransfer.setData('text/plain', deal.id.toString());
+                e.dataTransfer.effectAllowed = 'move';
+                requestAnimationFrame(() => card.classList.add('dragging'));
+            });
+            card.addEventListener('dragend', () => {
+                card.classList.remove('dragging');
+                dragDealId = null;
+                dragSourceStage = null;
+                // Remove any lingering drag-over
+                document.querySelectorAll('.kanban-col-body.drag-over').forEach(el => el.classList.remove('drag-over'));
+            });
+
+            // Click to edit
+            card.addEventListener('click', () => showEditDeal(deal.id));
+
+            return card;
+        }
+
+        async function moveDeal(dealId, newStatus) {
+            try {
+                await fetch(`${API}/deals/${dealId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                showToast(`Deal moved to ${newStatus}`);
+                loadPipeline();
+                loadStats();
+            } catch (e) {
+                showToast('Failed to move deal', true);
+            }
+        }
+
+        // ---- Deal Modal (Create) ----
+        function showAddDeal(stage) {
+            document.getElementById('dealModalTitle').textContent = 'New Deal';
+            document.getElementById('editDealId').value = '';
+            document.getElementById('dealTitle').value = '';
+            document.getElementById('dealValue').value = '';
+            document.getElementById('dealAddress').value = '';
+            document.getElementById('dealNotes').value = '';
+            document.getElementById('dealStatus').value = stage || 'new';
+            document.getElementById('dealDeleteWrap').style.display = 'none';
+            populateContactDropdown();
+            document.getElementById('dealModal').classList.add('show');
+        }
+
+        async function showEditDeal(dealId) {
+            try {
+                const r = await fetch(`${API}/deals/${dealId}`);
+                const deal = await r.json();
+                document.getElementById('dealModalTitle').textContent = 'Edit Deal';
+                document.getElementById('editDealId').value = deal.id;
+                document.getElementById('dealTitle').value = deal.title;
+                document.getElementById('dealValue').value = deal.value || '';
+                document.getElementById('dealAddress').value = deal.property_address || '';
+                document.getElementById('dealNotes').value = deal.notes || '';
+                document.getElementById('dealStatus').value = deal.status;
+                document.getElementById('dealDeleteWrap').style.display = '';
+                populateContactDropdown(deal.contact_id);
+                document.getElementById('dealModal').classList.add('show');
+            } catch (e) {
+                showToast('Failed to load deal', true);
+            }
+        }
+
+        function populateContactDropdown(selectedId) {
+            const sel = document.getElementById('dealContact');
+            sel.innerHTML = '<option value="">-- Select contact --</option>';
+            allContacts.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.full_name}${c.email ? ' (' + c.email + ')' : ''}`;
+                if (selectedId && c.id === selectedId) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        function closeDealModal() {
+            document.getElementById('dealModal').classList.remove('show');
+        }
+
+        async function saveDeal() {
+            const id = document.getElementById('editDealId').value;
+            const title = document.getElementById('dealTitle').value.trim();
+            const contactId = document.getElementById('dealContact').value;
+            const value = parseFloat(document.getElementById('dealValue').value) || null;
+            const status = document.getElementById('dealStatus').value;
+            const address = document.getElementById('dealAddress').value.trim() || null;
+            const notes = document.getElementById('dealNotes').value.trim() || null;
+
+            if (!title) { showToast('Title is required', true); return; }
+            if (!contactId && !id) { showToast('Contact is required', true); return; }
+
+            try {
+                if (id) {
+                    // Update existing deal
+                    await fetch(`${API}/deals/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title, value, status, property_address: address, notes })
+                    });
+                    showToast('Deal updated');
+                } else {
+                    // Create new deal
+                    const payload = { contact_id: parseInt(contactId), title, value, status, property_address: address, notes };
+                    await fetch(`${API}/deals`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    showToast('Deal created');
+                }
+                closeDealModal();
+                loadPipeline();
+                loadStats();
+            } catch (e) {
+                showToast('Failed to save deal', true);
+            }
+        }
+
+        function confirmDeleteDeal(dealId, title) {
+            if (confirm(`Delete deal "${title}"?`)) {
+                deleteDealById(dealId);
+            }
+        }
+
+        async function deleteDeal() {
+            const id = document.getElementById('editDealId').value;
+            if (!id) return;
+            if (!confirm('Delete this deal?')) return;
+            await deleteDealById(parseInt(id));
+            closeDealModal();
+        }
+
+        async function deleteDealById(dealId) {
+            try {
+                await fetch(`${API}/deals/${dealId}`, { method: 'DELETE' });
+                showToast('Deal deleted');
+                loadPipeline();
+                loadStats();
+            } catch (e) {
+                showToast('Failed to delete deal', true);
+            }
+        }
+
+        // ---- Filters ----
         function filterStatus(btn) {
             document.querySelectorAll('[data-status]').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -474,13 +869,18 @@
             }, 300);
         }
 
+        // ---- View toggle ----
         function switchView(view, tab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             document.getElementById('listView').style.display = view === 'list' ? '' : 'none';
             document.getElementById('pipelineView').style.display = view === 'pipeline' ? '' : 'none';
+            if (view === 'pipeline') {
+                loadPipeline();
+            }
         }
 
+        // ---- Contact Modal ----
         function showAddContact() {
             document.getElementById('modalTitle').textContent = 'Add Contact';
             document.getElementById('editContactId').value = '';
@@ -557,11 +957,22 @@
             loadContacts();
         }
 
-        function showToast(msg) {
+        // ---- Utilities ----
+        function showToast(msg, isError) {
             const t = document.getElementById('toast');
             t.textContent = msg;
-            t.classList.add('show');
+            t.className = 'toast show' + (isError ? ' error' : '');
             setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function escHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function escAttr(str) {
+            if (!str) return '';
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
         }
     </script>
 </body>

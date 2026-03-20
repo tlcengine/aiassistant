@@ -47,6 +47,7 @@ class DealCreate(BaseModel):
     contact_id: int
     title: str
     value: float | None = None
+    status: LeadStatus | None = None
     property_address: str | None = None
     mls_id: str | None = None
     notes: str | None = None
@@ -235,7 +236,6 @@ async def pipeline_view(db: AsyncSession = Depends(get_db)):
     stmt = (
         select(Deal)
         .options(selectinload(Deal.contact))
-        .where(Deal.status != LeadStatus.LOST)
         .order_by(Deal.updated_at.desc())
     )
     result = await db.execute(stmt)
@@ -243,8 +243,7 @@ async def pipeline_view(db: AsyncSession = Depends(get_db)):
 
     pipeline = {}
     for s in LeadStatus:
-        if s != LeadStatus.LOST:
-            pipeline[s.value] = []
+        pipeline[s.value] = []
 
     for d in deals:
         stage = d.status.value
